@@ -1,6 +1,7 @@
 // Seed fixtures — specs/00-product/02-data-model.md §7. Stable IDs so cross-refs and the
 // demo configId ('site_dimers_tt') are deterministic. Passwords are dev-only (see README).
 import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
 import type {
   AnalyticsEvent,
   Client,
@@ -118,7 +119,80 @@ export function buildSeed(): Seed {
     { id: "lo_dimers_dk", siteId: "st_dimers_tt", widgetInstanceId: "wi_dimers_odds", operatorId: "op_dk", affiliateUrl: "https://draftkings.example/aff?c=dimers&w=odds" },
   ];
 
-  return { clients, users, verticals, operators, sites, widgetTypes, widgetInstances, overrides, events: [] };
+  return {
+    clients,
+    users,
+    verticals,
+    operators,
+    sites,
+    widgetTypes,
+    widgetInstances,
+    overrides,
+    events: generateEvents(sites, widgetInstances, operators),
+  };
+}
+
+// ── synthetic analytics (14 days × site × widget × active operator) ──
+function mulberry32(seed: number) {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function generateEvents(sites: Site[], instances: WidgetInstance[], operators: Operator[]): AnalyticsEvent[] {
+  const rng = mulberry32(1337);
+  const DAY = 86_400_000;
+  const now = Date.now();
+  const out: AnalyticsEvent[] = [];
+
+  const ev = (
+    type: AnalyticsEvent["type"],
+    site: Site,
+    wi: WidgetInstance,
+    op: Operator,
+    ts: number,
+    meta?: Record<string, unknown>,
+  ): AnalyticsEvent => ({
+    id: `ev_${randomUUID()}`,
+    type,
+    configId: site.configId,
+    siteId: site.id,
+    widgetInstanceId: wi.id,
+    operatorId: op.id,
+    verticalId: site.verticalId,
+    ts: new Date(ts).toISOString(),
+    anonId: `anon_${Math.floor(ts % 100000)}`,
+    ua: null,
+    referer: null,
+    meta: meta ?? null,
+  });
+
+  for (const site of sites) {
+    const wis = instances.filter((w) => w.siteId === site.id);
+    const ops = operators.filter((o) => o.verticalId === site.verticalId && o.active && !o.internalOnly);
+    for (const wi of wis) {
+      for (const op of ops) {
+        for (let day = 13; day >= 0; day--) {
+          const base = now - day * DAY;
+          const impressions = 12 + Math.floor(rng() * 18);
+          for (let i = 0; i < impressions; i++) out.push(ev("impression", site, wi, op, base + Math.floor(rng() * DAY)));
+          const clicks = Math.round(impressions * (0.06 + rng() * 0.06));
+          for (let i = 0; i < clicks; i++) {
+            const ts = base + Math.floor(rng() * DAY);
+            out.push(ev("click", site, wi, op, ts));
+            // ~12% of clicks convert — per-click so totals don't round to zero
+            if (rng() < 0.12) out.push(ev("conversion", site, wi, op, ts + 60_000, { value: op.estPayout ?? 50 }));
+          }
+        }
+      }
+    }
+  }
+  return out;
 }
 
 // ── tiny builders to keep the fixture readable ──

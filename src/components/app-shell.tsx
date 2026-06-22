@@ -23,6 +23,7 @@ import { Wordmark } from "@/components/logo";
 import { ProductSwitch } from "@/components/product-switch";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ToastProvider } from "@/components/ui/toast";
+import { PublishBar } from "@/components/link-cms/publish-bar";
 import { logoutAction } from "@/server/actions/auth";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ size?: number }> };
@@ -148,35 +149,15 @@ function UserMenu({ user }: { user: SessionClaims }) {
   );
 }
 
-function PublishBar() {
-  // Phase-2 slot/stub — fully wired in Phase 3 (specs/10-link-cms/08-publish-workflow.md).
-  return (
-    <footer
-      data-testid="publish-bar"
-      className="sticky bottom-0 z-30 flex items-center justify-between gap-3 border-t border-border bg-surface-2 px-4 py-2"
-    >
-      <span className="text-xs text-fg-muted">
-        Working changes auto-save. <span className="text-fg-faint">Last published: —</span>
-      </span>
-      <button
-        type="button"
-        disabled
-        title="Wired in Phase 3 (Publish workflow)"
-        className="rounded bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg opacity-50"
-      >
-        Publish to live widgets
-      </button>
-    </footer>
-  );
-}
-
 export function AppShell({
   user,
   vertical,
+  lastPublished,
   children,
 }: {
   user: SessionClaims;
   vertical: VerticalKey;
+  lastPublished: string | null;
   children: React.ReactNode;
 }) {
   const [drawer, setDrawer] = React.useState(false);
@@ -242,7 +223,7 @@ export function AppShell({
         <main className="min-w-0 flex-1">{children}</main>
       </div>
 
-      <PublishBar />
+      <PublishBar lastPublished={lastPublished} />
     </div>
     </ToastProvider>
   );

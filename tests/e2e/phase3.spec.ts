@@ -60,6 +60,48 @@ test("Step 3 — Edit Links: INHERITED/CUSTOM, multi-CTA rows, override + reset 
   await expect(page.getByTestId("override-state-wi_dimers_odds-op_dk")).toContainText("INHERITED");
 });
 
+test("Step 4 — Embed: snippet carries configId + widget id, copy present (§9.7)", async ({ page }) => {
+  await loginClient(page);
+  await page.goto("/admin/embed?site=st_dimers_tt");
+  const snippet = page.getByTestId("embed-snippet-wi_dimers_odds");
+  await expect(snippet).toContainText("site_dimers_tt");
+  await expect(snippet).toContainText("wi_dimers_odds");
+  await expect(page.getByTestId("embed-copy-wi_dimers_odds")).toBeVisible();
+});
+
+test("Gallery — preview CTAs reflect active operators; kill-switch removes them (§9.8, §9.4)", async ({ page }) => {
+  await loginClient(page);
+  await page.goto("/admin/gallery");
+  await expect(page.getByTestId("gallery-card-odds_comparison_table")).toBeVisible();
+  expect(await page.getByTestId("preview-cta-pinnacle").count()).toBeGreaterThan(0);
+
+  // Turn Pinnacle off in Step 1 (global kill switch).
+  await page.goto("/admin/operators");
+  await page.getByLabel("Toggle Pinnacle").click();
+  await expect(page.getByText("Pinnacle turned off")).toBeVisible();
+
+  // Gallery no longer renders any Pinnacle CTA.
+  await page.goto("/admin/gallery");
+  expect(await page.getByTestId("preview-cta-pinnacle").count()).toBe(0);
+});
+
+test("Performance — KPIs, breakdown, export (§9.9)", async ({ page }) => {
+  await loginClient(page);
+  await page.goto("/admin/performance");
+  await expect(page.getByTestId("kpi-views")).toBeVisible();
+  await expect(page.getByTestId("breakdown-table")).toContainText("DraftKings");
+  await expect(page.getByTestId("export-csv")).toBeVisible();
+});
+
+test("Publish — diff dialog + publish goes live (§9.10)", async ({ page }) => {
+  await loginClient(page);
+  await page.goto("/admin/sites");
+  await page.getByTestId("publish-open").click();
+  await expect(page.getByTestId("publish-confirm")).toBeVisible();
+  await page.getByTestId("publish-confirm").click();
+  await expect(page.getByText("Published", { exact: false })).toBeVisible();
+});
+
 test("Phase 3 screenshots (1280 + 375)", async ({ page }) => {
   await loginClient(page);
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -71,6 +113,14 @@ test("Phase 3 screenshots (1280 + 375)", async ({ page }) => {
   await page.screenshot({ path: "test-results/phase3-links-1280.png", fullPage: true });
   await page.goto("/admin/setup");
   await page.screenshot({ path: "test-results/phase3-setup-1280.png", fullPage: true });
+  await page.goto("/admin/gallery");
+  await page.screenshot({ path: "test-results/phase3-gallery-1280.png", fullPage: true });
+  await page.goto("/admin/performance");
+  await page.getByTestId("timeseries").waitFor();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: "test-results/phase3-performance-1280.png", fullPage: true });
+  await page.goto("/admin/embed?site=st_dimers_tt");
+  await page.screenshot({ path: "test-results/phase3-embed-1280.png", fullPage: true });
   await page.setViewportSize({ width: 375, height: 760 });
   await page.goto("/admin/links?site=st_dimers_tt");
   await page.screenshot({ path: "test-results/phase3-links-375.png", fullPage: true });
