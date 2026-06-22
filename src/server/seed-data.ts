@@ -1,0 +1,170 @@
+// Seed fixtures — specs/00-product/02-data-model.md §7. Stable IDs so cross-refs and the
+// demo configId ('site_dimers_tt') are deterministic. Passwords are dev-only (see README).
+import bcrypt from "bcryptjs";
+import type {
+  AnalyticsEvent,
+  Client,
+  LinkOverride,
+  Operator,
+  Site,
+  User,
+  Vertical,
+  WidgetInstance,
+  WidgetType,
+} from "@/lib/types";
+
+const hash = (pw: string) => bcrypt.hashSync(pw, 10);
+
+export const DEV_CREDENTIALS = [
+  { email: "super@aithreus.internal", password: "super123", role: "superadmin" },
+  { email: "editor@aithreus.internal", password: "editor123", role: "internal_editor" },
+  { email: "client@dimers.com", password: "client123", role: "affiliate_client" },
+] as const;
+
+export interface Seed {
+  clients: Client[];
+  users: User[];
+  verticals: Vertical[];
+  operators: Operator[];
+  sites: Site[];
+  widgetTypes: WidgetType[];
+  widgetInstances: WidgetInstance[];
+  overrides: LinkOverride[];
+  events: AnalyticsEvent[];
+}
+
+export function buildSeed(): Seed {
+  const verticals: Vertical[] = [
+    { id: "v_tt", key: "TT", name: "TT (Sports)", domain: "sports", description: "Multi-sportsbook analytics, edges, and calibrated sizing." },
+    { id: "v_vnx", key: "VNX", name: "VNX (Prediction Markets)", domain: "prediction_markets", description: "Polymarket/Kalshi prediction-market analytics and edges." },
+  ];
+
+  const clients: Client[] = [
+    { id: "cl_aithreus", name: "Aithreus", type: "internal", status: "active" },
+    { id: "cl_dimers", name: "Dimers", type: "affiliate", status: "active" },
+    { id: "cl_catena", name: "Catena Media", type: "affiliate", status: "active" },
+  ];
+
+  const users: User[] = [
+    { id: "u_super", clientId: "cl_aithreus", email: "super@aithreus.internal", role: "superadmin", name: "Sam Super", passwordHash: hash("super123") },
+    { id: "u_editor", clientId: "cl_aithreus", email: "editor@aithreus.internal", role: "internal_editor", name: "Eddie Editor", passwordHash: hash("editor123") },
+    { id: "u_client", clientId: "cl_dimers", email: "client@dimers.com", role: "affiliate_client", name: "Dana Dimers", passwordHash: hash("client123") },
+  ];
+
+  const operators: Operator[] = [
+    // ── TT (sports) ──
+    op("op_dk", "v_tt", "DraftKings", "Bet on DraftKings", "#53d337", "https://draftkings.example/aff?c=base", true, "odds", "Sportsbook odds + execution", "apiKey", "live", false, 120),
+    op("op_fd", "v_tt", "FanDuel", "Bet on FanDuel", "#1493ff", "https://fanduel.example/aff?c=base", true, "odds", "Sportsbook odds + execution", "apiKey", "live", false, 110),
+    op("op_mgm", "v_tt", "BetMGM", "Bet on BetMGM", "#c5a572", "https://betmgm.example/aff?c=base", true, "odds", "Sportsbook odds + execution", "apiKey", "live", false, 100),
+    op("op_caesars", "v_tt", "Caesars", "Bet on Caesars", "#1a7a4c", "https://caesars.example/aff?c=base", true, "odds", "Sportsbook odds + execution", "apiKey", "live", false, 95),
+    op("op_pinnacle", "v_tt", "Pinnacle", "Line at Pinnacle", "#e23b3b", "https://pinnacle.example/aff?c=base", true, "reference", "Sharp-line reference", "apiKey", "live", false, 130),
+    op("op_oddsapi", "v_tt", "The Odds API", "Consensus odds", "#8b5cf6", "https://the-odds-api.example", false, "data", "Consensus odds feed", "apiKey", "live", false, undefined),
+    op("op_stake", "v_tt", "Stake.com", "Play on Stake", "#1a9bf0", "https://stake.example/internal", true, "execution", "Execution venue (internal handling)", "none", "live", true, undefined),
+    op("op_betrivers", "v_tt", "BetRivers", "Bet on BetRivers", "#13294b", "https://betrivers.example/aff?c=base", false, "odds", "Sportsbook odds", "apiKey", "live", false, 80),
+    // ── VNX (prediction markets) ──
+    op("op_poly", "v_vnx", "Polymarket", "Trade on Polymarket", "#1652f0", "https://polymarket.example/aff?c=base", true, "execution", "Market data + execution", "EIP-712/HMAC", "live", false, 60),
+    op("op_kalshi", "v_vnx", "Kalshi", "Trade on Kalshi", "#00d09c", "https://kalshi.example/aff?c=base", true, "execution", "Market data + execution", "RSA-PSS", "live", false, 55),
+    op("op_calcx", "v_vnx", "CalcX", "Open CalcX", "#f59e0b", "https://calcx.example/aff?c=base", true, "data", "Pricing & analytics", "apiKey", "beta", false, 40),
+    op("op_predictit", "v_vnx", "PredictIt", "Trade on PredictIt", "#d9472b", "https://predictit.example/aff?c=base", false, "execution", "Prediction-market venue", "apiKey", "live", false, 45),
+  ];
+
+  const widgetTypes: WidgetType[] = [
+    // TT
+    wt("wt_tt_prob", "v_tt", "probability_widget", "Probability Widget", "Calibrated win probability + edge for a single matchup.", "single", "fixed_slot", {
+      event: "Lakers vs Celtics", model_prob: 0.58, market_prob: 0.54, edge: 0.04,
+    }),
+    wt("wt_tt_line", "v_tt", "line_movement_chart", "Line Movement Chart", "How the line moved from open to now.", "single", "fixed_slot", {
+      market: "NBA Spread", open: -3.5, now: -5.5, series: [-3.5, -4, -4.5, -5, -5.5],
+    }),
+    wt("wt_tt_injury", "v_tt", "injury_impact_ticker", "Injury Impact Ticker", "Live injury news with modeled win-prob deltas.", "single", "fixed_slot", {
+      items: [{ player: "A. Davis", status: "OUT", delta: -0.06 }, { player: "J. Tatum", status: "GTD", delta: -0.02 }],
+    }),
+    wt("wt_tt_odds", "v_tt", "odds_comparison_table", "Odds Comparison Table", "Best price across every book — one CTA per book.", "multi", "per_row", {
+      market: "NBA Moneyline — Lakers",
+      rows: [{ book: "DraftKings", price: -110 }, { book: "FanDuel", price: -105 }, { book: "BetMGM", price: -115 }, { book: "Caesars", price: -108 }, { book: "Pinnacle", price: -103 }],
+    }),
+    wt("wt_tt_props", "v_tt", "player_projection_suite", "Player Projection Suite", "Player props vs model projections — CTA per book.", "multi", "per_row", {
+      player: "L. James", projections: [{ stat: "PTS", proj: 26.4, line: 24.5 }, { stat: "AST", proj: 7.8, line: 7.5 }],
+    }),
+    // VNX
+    wt("wt_vnx_whale", "v_vnx", "whale_tracker", "Whale Tracker", "Track a whale's positions — CTA per operator they trade.", "multi", "per_row", {
+      whale: "0xA1…f9", positions: [{ market: "Election 2028", side: "YES", size: 250000 }, { market: "Fed cut in Sept", side: "NO", size: 80000 }],
+    }),
+    wt("wt_vnx_prob", "v_vnx", "probability_widget_vnx", "Probability Widget", "Calibrated probability for a single prediction market.", "single", "fixed_slot", {
+      market: "Fed cuts in September", model_prob: 0.62, market_prob: 0.58, edge: 0.04,
+    }),
+    wt("wt_vnx_odds", "v_vnx", "odds_comparison_table_vnx", "Market Comparison Table", "Price across prediction-market venues — CTA per venue.", "multi", "per_row", {
+      market: "Fed cuts in September — YES",
+      rows: [{ venue: "Polymarket", price: 0.58 }, { venue: "Kalshi", price: 0.6 }, { venue: "CalcX", price: 0.57 }],
+    }),
+  ];
+
+  const sites: Site[] = [
+    { id: "st_dimers_tt", clientId: "cl_dimers", verticalId: "v_tt", domain: "dimers.com", status: "live", configId: "site_dimers_tt", lastPublishedAt: null },
+    { id: "st_dimers_vnx", clientId: "cl_dimers", verticalId: "v_vnx", domain: "predictions.dimers.com", status: "draft", configId: "site_dimers_vnx", lastPublishedAt: null },
+    { id: "st_catena_tt", clientId: "cl_catena", verticalId: "v_tt", domain: "catena-demo.com", status: "live", configId: "site_catena_tt", lastPublishedAt: null },
+  ];
+
+  const widgetInstances: WidgetInstance[] = [
+    { id: "wi_dimers_odds", siteId: "st_dimers_tt", widgetTypeId: "wt_tt_odds" },
+    { id: "wi_dimers_prob", siteId: "st_dimers_tt", widgetTypeId: "wt_tt_prob" },
+    { id: "wi_dimers_line", siteId: "st_dimers_tt", widgetTypeId: "wt_tt_line" },
+    { id: "wi_dimers_whale", siteId: "st_dimers_vnx", widgetTypeId: "wt_vnx_whale" },
+    { id: "wi_catena_odds", siteId: "st_catena_tt", widgetTypeId: "wt_tt_odds" },
+  ];
+
+  // One CUSTOM override so Edit-links shows both INHERITED and CUSTOM out of the box.
+  const overrides: LinkOverride[] = [
+    { id: "lo_dimers_dk", siteId: "st_dimers_tt", widgetInstanceId: "wi_dimers_odds", operatorId: "op_dk", affiliateUrl: "https://draftkings.example/aff?c=dimers&w=odds" },
+  ];
+
+  return { clients, users, verticals, operators, sites, widgetTypes, widgetInstances, overrides, events: [] };
+}
+
+// ── tiny builders to keep the fixture readable ──
+function op(
+  id: string,
+  verticalId: string,
+  name: string,
+  buttonLabel: string,
+  brandColor: string,
+  affiliateUrl: string,
+  active: boolean,
+  category: Operator["category"],
+  role: string,
+  authType: string,
+  integrationStatus: Operator["integrationStatus"],
+  internalOnly: boolean,
+  estPayout?: number,
+): Operator {
+  return {
+    id,
+    verticalId,
+    name,
+    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+    buttonLabel,
+    brandColor,
+    affiliateUrl,
+    active,
+    category,
+    role,
+    authType,
+    integrationStatus,
+    internalOnly,
+    estPayout,
+    logoAssetId: null,
+  };
+}
+
+function wt(
+  id: string,
+  verticalId: string,
+  key: string,
+  name: string,
+  description: string,
+  ctaMode: WidgetType["ctaMode"],
+  ctaRendering: WidgetType["ctaRendering"],
+  sampleDataJson: unknown,
+): WidgetType {
+  return { id, verticalId, key, name, description, ctaMode, ctaRendering, sampleDataJson, thumbnailAssetId: null };
+}

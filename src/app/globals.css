@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens — specs/00-product/05-design-system.md §3. Dark is the default. */
+:root {
+  --bg: #0b0e14;
+  --surface-1: #10141d;
+  --surface-2: #161b27;
+  --surface-3: #1c2230;
+  --border: #232b3a;
+  --border-strong: #2e3850;
+
+  --text: #e8ecf4;
+  --text-strong: #ffffff;
+  --text-muted: #95a0b5;
+  --text-faint: #5e6a82;
+
+  --accent: #1fd1e6;
+  --accent-hover: #3bddef;
+  --accent-active: #16b4c9;
+  --on-accent: #04141a;
+
+  --positive: #2bd17e;
+  --negative: #ff5c6a;
+  --warning: #f6b23c;
+  --focus-ring: #1fd1e6;
+
+  --radius: 6px;
+
+  /* Prototype uses a system stack (no runtime CDN). Inter self-hosting is a Phase-7 polish. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+}
+
+html.light {
+  --bg: #f6f8fb;
+  --surface-1: #ffffff;
+  --surface-2: #f1f4f9;
+  --surface-3: #e9eef5;
+  --border: #e1e6ef;
+  --border-strong: #c9d2e0;
+
+  --text: #0e1320;
+  --text-strong: #000000;
+  --text-muted: #586277;
+  --text-faint: #8a93a6;
+
+  --accent: #0e9cb3;
+  --accent-hover: #0b8499;
+  --accent-active: #097c90;
+  --on-accent: #ffffff;
+
+  --positive: #11a861;
+  --negative: #d83a48;
+  --warning: #c9851a;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    color-scheme: dark;
+  }
+  html.light {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-bg text-fg font-sans;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--surface-3);
+    border-radius: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+}
+
+@layer utilities {
+  /* tabular numerals for metrics/tables (design system §4) */
+  .nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}
