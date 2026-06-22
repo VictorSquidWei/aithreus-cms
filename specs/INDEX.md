@@ -31,10 +31,10 @@
 | Spec | Title | Status | Traces to |
 |---|---|---|---|
 | [10-link-cms/00-overview.md](10-link-cms/00-overview.md) | Link CMS area overview: product switch, auto-save, cross-cutting | **approved** | Report §5; CMS-2 §4–§7 |
-| [10-link-cms/01-welcome-setup.md](10-link-cms/01-welcome-setup.md) | Welcome / guided 4-step setup | planned | Report §5.0; CMS-2 §4 |
-| [10-link-cms/02-operators.md](10-link-cms/02-operators.md) | Step 1 — Operators (CRUD + active kill-switch) | planned | Report §5.1; CMS-2 §4 (Step 1), §7 |
-| [10-link-cms/03-sites.md](10-link-cms/03-sites.md) | Step 2 — Sites (CRUD + configId + live counts) | planned | Report §5.2; CMS-2 §4 (Step 2) |
-| [10-link-cms/04-edit-links.md](10-link-cms/04-edit-links.md) | Step 3 — Edit links + **resolution algorithm** | planned | Report §5.3, §4.6; CMS-2 §2–§3, §4 (Step 3) |
+| [10-link-cms/01-welcome-setup.md](10-link-cms/01-welcome-setup.md) | Welcome / guided 4-step setup | **implemented** | Report §5.0; CMS-2 §4 |
+| [10-link-cms/02-operators.md](10-link-cms/02-operators.md) | Step 1 — Operators (CRUD + active kill-switch) | **implemented** | Report §5.1; CMS-2 §4 (Step 1), §7 |
+| [10-link-cms/03-sites.md](10-link-cms/03-sites.md) | Step 2 — Sites (CRUD + configId + live counts) | **implemented** | Report §5.2; CMS-2 §4 (Step 2) |
+| [10-link-cms/04-edit-links.md](10-link-cms/04-edit-links.md) | Step 3 — Edit links + **resolution algorithm** | **implemented** | Report §5.3, §4.6; CMS-2 §2–§3, §4 (Step 3) |
 | [10-link-cms/05-embed-code.md](10-link-cms/05-embed-code.md) | Step 4 — Embed code (per-site config, per-widget snippet) | planned | Report §5.4; CMS-2 §4 (Step 4) |
 | [10-link-cms/06-widget-gallery.md](10-link-cms/06-widget-gallery.md) | Widget Gallery (preview + grab embed) | planned | Report §5.5; CMS-2 §5 |
 | [10-link-cms/07-performance.md](10-link-cms/07-performance.md) | Performance dashboard (views/clicks/CTR/conv/rev) | planned | Report §5.6; CMS-2 §5 |
