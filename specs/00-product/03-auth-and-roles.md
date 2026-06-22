@@ -26,9 +26,11 @@ Define authentication, the three roles, session shape, route guards, and the cen
 
 ## 3. Authentication
 
-- **Auth.js (NextAuth) Credentials provider.** Email + password; `passwordHash` via **bcrypt** (cost 10). No third-party IdP in the prototype.
-- **Session = JWT cookie** (httpOnly, secure in prod, `SameSite=Lax`). Claims: `userId`, `role`, `clientId`, `name`, `email`. TTL 7 days, sliding.
-- **`AUTH_SECRET`** from env signs the JWT.
+> **Implementation note (deviation from Report §3.1's "Auth.js (NextAuth)").** The prototype implements credentials auth with a **custom signed-JWT session using `jose`** (the same JWT primitive NextAuth uses) + `bcryptjs`, rather than the NextAuth library. Rationale: NextAuth v5 is still beta; a thin self-owned session layer is simpler, dependency-light, and fully under our control while delivering the **identical behavior** below (credentials login, hashed passwords, signed cookie with role/clientId claims, guards). The Auth.js migration path remains open and is a documented production option.
+
+- **Credentials login.** Email + password; `passwordHash` via **bcryptjs** (cost 10). No third-party IdP in the prototype.
+- **Session = signed-JWT cookie** `aithreus_session` (httpOnly, secure in prod, `SameSite=Lax`), signed with `jose` (HS256). Claims: `userId`, `role`, `clientId`, `name`, `email`. TTL 7 days.
+- **`AUTH_SECRET`** from env signs/verifies the JWT.
 - **Seeded users (3)** — one per role (Report §10.1), e.g.:
   - `super@aithreus.internal` → `superadmin` (internal client)
   - `editor@aithreus.internal` → `internal_editor` (internal client)

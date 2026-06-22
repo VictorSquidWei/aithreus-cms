@@ -30,7 +30,7 @@
 
 | Spec | Title | Status | Traces to |
 |---|---|---|---|
-| [10-link-cms/00-overview.md](10-link-cms/00-overview.md) | Link CMS area overview: product switch, auto-save, cross-cutting | planned | Report §5; CMS-2 §4–§7 |
+| [10-link-cms/00-overview.md](10-link-cms/00-overview.md) | Link CMS area overview: product switch, auto-save, cross-cutting | **approved** | Report §5; CMS-2 §4–§7 |
 | [10-link-cms/01-welcome-setup.md](10-link-cms/01-welcome-setup.md) | Welcome / guided 4-step setup | planned | Report §5.0; CMS-2 §4 |
 | [10-link-cms/02-operators.md](10-link-cms/02-operators.md) | Step 1 — Operators (CRUD + active kill-switch) | planned | Report §5.1; CMS-2 §4 (Step 1), §7 |
 | [10-link-cms/03-sites.md](10-link-cms/03-sites.md) | Step 2 — Sites (CRUD + configId + live counts) | planned | Report §5.2; CMS-2 §4 (Step 2) |
@@ -77,11 +77,11 @@
 
 | Spec | Component(s) | Status | Traces to |
 |---|---|---|---|
-| [components/00-overview.md](components/00-overview.md) | Conventions: props, `data-testid`, shared states | planned | Report §8.2–§8.3 |
-| [components/app-shell.md](components/app-shell.md) | AppShell / Sidebar / TopBar | planned | Report §8.3 |
-| [components/theme-toggle.md](components/theme-toggle.md) | ThemeToggle (dark-first) | planned | Report §8.3 |
-| [components/product-switch.md](components/product-switch.md) | ProductSwitch (TT\|VNX) | planned | Report §8.2; CMS-2 §1 |
-| [components/logo.md](components/logo.md) | Aithreus SVG mark + favicon | planned | Report §8.4 |
+| [components/00-overview.md](components/00-overview.md) | Conventions: props, `data-testid`, shared states | **approved** | Report §8.2–§8.3 |
+| [components/app-shell.md](components/app-shell.md) | AppShell / Sidebar / TopBar | **implemented** | Report §8.3 |
+| [components/theme-toggle.md](components/theme-toggle.md) | ThemeToggle (dark-first) | **implemented** | Report §8.3 |
+| [components/product-switch.md](components/product-switch.md) | ProductSwitch (TT\|VNX) | **implemented** | Report §8.2; CMS-2 §1 |
+| [components/logo.md](components/logo.md) | Aithreus SVG mark + favicon | **implemented** | Report §8.4 |
 | [components/portfolio-matrix.md](components/portfolio-matrix.md) | PortfolioMatrix (2×2) | planned | Report §8.2; Handoff §2 |
 | [components/product-card.md](components/product-card.md) | ProductCard | planned | Report §8.2; Handoff §9 |
 | [components/module-card.md](components/module-card.md) | ModuleCard | planned | Report §8.2; Handoff §9 |

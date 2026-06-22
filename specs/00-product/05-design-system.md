@@ -64,7 +64,7 @@ Implemented as CSS custom properties on `:root` (dark default) and `.light`, con
 
 ## 4. Typography
 
-- **UI sans:** **Inter** (self-hosted via `next/font` — no runtime CDN). Fallback `system-ui`.
+- **UI sans:** **Inter** (self-hosted via `next/font` — no runtime CDN). Fallback `system-ui`. *(Prototype currently ships the system stack — `system-ui`/Segoe UI — to avoid a build-time font fetch; Inter self-hosting is a Phase-7 polish item.)*
 - **Numeric / mono:** **JetBrains Mono** for numbers, URLs, `configId`s, snippets, tabular data — essential for the trading feel and snippet legibility (Report §8.1).
 - **Tabular numerals:** apply `font-variant-numeric: tabular-nums` to all metric/table number cells.
 - **Scale:** base **14px** (`text-sm`) in-app for density. In-app heading cap = **`text-xl`** (webapp rule, Report §8.1); marketing hero may exceed (up to `text-5xl`).
