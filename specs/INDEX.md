@@ -54,22 +54,22 @@
 
 | Spec | Title | Status | Traces to |
 |---|---|---|---|
-| [30-presentation/00-overview.md](30-presentation/00-overview.md) | Presentation area overview (gated B2B + public shell) | planned | Report §7; Handoff §7 |
-| [30-presentation/01-marketing-landing.md](30-presentation/01-marketing-landing.md) | Public marketing landing | planned | Report §7; Handoff §7 |
-| [30-presentation/02-portfolio-matrix.md](30-presentation/02-portfolio-matrix.md) | 2×2 product matrix | planned | Handoff §2; Report §7 |
-| [30-presentation/03-product-pages.md](30-presentation/03-product-pages.md) | Product detail pages (4 products) | planned | Handoff §3; Report §4.8 |
-| [30-presentation/04-platform.md](30-presentation/04-platform.md) | Shared signal-and-calibration platform page | planned | Handoff §4 |
-| [30-presentation/05-integrations.md](30-presentation/05-integrations.md) | Global integrations grid (reads Operator) | planned | Handoff §5; Report §4.3 |
-| [30-presentation/06-status.md](30-presentation/06-status.md) | Read-only StatusFeed / health | planned | Handoff §3.3, §4; Report §4.8 |
-| [30-presentation/07-docs.md](30-presentation/07-docs.md) | CMS-managed docs/pages | planned | Handoff §7; Report §4.8 (Page) |
+| [30-presentation/00-overview.md](30-presentation/00-overview.md) | Presentation area overview (gated B2B + public shell) | **implemented** | Report §7; Handoff §7 |
+| [30-presentation/01-marketing-landing.md](30-presentation/01-marketing-landing.md) | Public marketing landing | **implemented** | Report §7; Handoff §7 |
+| [30-presentation/02-portfolio-matrix.md](30-presentation/02-portfolio-matrix.md) | 2×2 product matrix | **implemented** | Handoff §2; Report §7 |
+| [30-presentation/03-product-pages.md](30-presentation/03-product-pages.md) | Product detail pages (4 products) | **implemented** | Handoff §3; Report §4.8 |
+| [30-presentation/04-platform.md](30-presentation/04-platform.md) | Shared signal-and-calibration platform page | **implemented** | Handoff §4 |
+| [30-presentation/05-integrations.md](30-presentation/05-integrations.md) | Global integrations grid (reads Operator) | **implemented** | Handoff §5; Report §4.3 |
+| [30-presentation/06-status.md](30-presentation/06-status.md) | Read-only StatusFeed / health | **implemented** | Handoff §3.3, §4; Report §4.8 |
+| [30-presentation/07-docs.md](30-presentation/07-docs.md) | CMS-managed docs/pages | **implemented** | Handoff §7; Report §4.8 (Page) |
 
 ## Phase 6 — Content control panel + audit (`/specs/40-admin-content/`) — *Layer B1*
 
 | Spec | Title | Status | Traces to |
 |---|---|---|---|
-| [40-admin-content/00-overview.md](40-admin-content/00-overview.md) | Content control panel area overview | planned | Report §7; Handoff §7 |
-| [40-admin-content/01-content-control-panel.md](40-admin-content/01-content-control-panel.md) | Edit Products/Modules/Strategies/Pages/Changelog | planned | Handoff §7; Report §4.8 |
-| [40-admin-content/02-audit-log.md](40-admin-content/02-audit-log.md) | Audit log of publishes/edits | planned | Report §7 (`/admin/audit`) |
+| [40-admin-content/00-overview.md](40-admin-content/00-overview.md) | Content control panel area overview | **implemented** | Report §7; Handoff §7 |
+| [40-admin-content/01-content-control-panel.md](40-admin-content/01-content-control-panel.md) | Edit Products / Docs / Changelog | **implemented** | Handoff §7; Report §4.8 |
+| [40-admin-content/02-audit-log.md](40-admin-content/02-audit-log.md) | Audit log of publishes/edits | **implemented** | Report §7 (`/admin/audit`) |
 
 ## Cross-cutting — Components (`/specs/components/`) — *written just-in-time before each is built*
 
