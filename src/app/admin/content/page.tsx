@@ -1,5 +1,16 @@
-import { ScreenPlaceholder } from "@/components/screen-placeholder";
+import { getStore } from "@/server/store";
+import { PageContainer, PageHeader } from "@/components/page-container";
+import { ContentManager } from "@/components/admin-content/content-manager";
 
-export default function Page() {
-  return <ScreenPlaceholder title="Content panel" tag="Internal only" note="Edit Products / Modules / Strategies / Pages / Changelog — built in Phase 6 (specs/40-admin-content/01-content-control-panel.md)." />;
+export default async function ContentPage() {
+  const store = getStore();
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Content panel"
+        subtitle="Edit products, docs, and releases — changes reflect on the live site."
+      />
+      <ContentManager products={store.listProducts()} pages={store.listPages()} />
+    </PageContainer>
+  );
 }

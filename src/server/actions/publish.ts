@@ -70,8 +70,17 @@ export async function publishAllAction(): Promise<{ ok: true; diff: PublishDiff 
     store.updateSite(site.id, { lastPublishedAt: now });
   }
 
+  store.appendAudit({
+    ts: now,
+    actorId: session?.userId ?? "system",
+    actorName: session?.name ?? "System",
+    action: "publish",
+    summary: `Published ${sites.length} site(s) · ${diff.changedLinks} link change(s)`,
+  });
+
   revalidatePath("/admin");
   revalidatePath("/admin/sites");
   revalidatePath("/admin/embed");
+  revalidatePath("/admin/audit");
   return { ok: true, diff };
 }

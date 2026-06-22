@@ -230,5 +230,15 @@ export interface MediaAsset {
   alt: string;
 }
 
+// Audit trail (Layer B1) — records publishes + content edits.
+export interface AuditEntry {
+  id: string;
+  ts: string;
+  actorId: string;
+  actorName: string;
+  action: string; // e.g. 'publish' | 'product.update' | 'page.create'
+  summary: string;
+}
+
 // Working state across the admin (auto-save semantics): edits write directly to the
 // tables above; PublishedConfig is only written by the Publish action (§08).

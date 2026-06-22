@@ -5,11 +5,19 @@
 import { randomUUID } from "node:crypto";
 import type {
   AnalyticsEvent,
+  AuditEntry,
+  Changelog,
   Client,
   LinkOverride,
+  Module,
   Operator,
+  Page,
+  Product,
   PublishedConfig,
   Site,
+  StatusFeed,
+  Strategy,
+  Tier,
   User,
   Vertical,
   VerticalKey,
@@ -38,6 +46,14 @@ class InMemoryStore {
   overrides = new Map<string, LinkOverride>();
   published = new Map<string, PublishedConfig[]>(); // configId -> versions
   events: AnalyticsEvent[] = [];
+  products = new Map<string, Product>();
+  modules = new Map<string, Module>();
+  strategies = new Map<string, Strategy>();
+  tiers = new Map<string, Tier>();
+  changelog = new Map<string, Changelog>();
+  statusFeed = new Map<string, StatusFeed>();
+  pages = new Map<string, Page>();
+  audit: AuditEntry[] = [];
 
   constructor() {
     const seed = buildSeed();
@@ -50,6 +66,14 @@ class InMemoryStore {
     for (const wi of seed.widgetInstances) this.widgetInstances.set(wi.id, wi);
     for (const ov of seed.overrides) this.overrides.set(ov.id, ov);
     this.events = seed.events ?? [];
+    for (const p of seed.products) this.products.set(p.id, p);
+    for (const x of seed.modules) this.modules.set(x.id, x);
+    for (const x of seed.strategies) this.strategies.set(x.id, x);
+    for (const x of seed.tiers) this.tiers.set(x.id, x);
+    for (const x of seed.changelog) this.changelog.set(x.id, x);
+    for (const x of seed.statusFeed) this.statusFeed.set(x.id, x);
+    for (const x of seed.pages) this.pages.set(x.id, x);
+    this.audit = seed.audit ?? [];
 
     // Pre-publish live sites so the runtime + /demo render immediately (seed-time publish).
     for (const site of this.sites.values()) {
@@ -247,6 +271,105 @@ class InMemoryStore {
     return this.events.filter((e) =>
       Object.entries(filter).every(([k, v]) => v == null || (e as unknown as Record<string, unknown>)[k] === v),
     );
+  }
+
+  // ── content (Layer A / B1) ──────────────────────────────────────────
+  listProducts(verticalKey?: VerticalKey): Product[] {
+    const vid = verticalKey ? this.verticalId(verticalKey) : undefined;
+    return [...this.products.values()]
+      .filter((p) => !vid || p.verticalId === vid)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  getProduct(id: string) {
+    return this.products.get(id);
+  }
+  getProductBySlug(slug: string) {
+    return [...this.products.values()].find((p) => p.slug === slug);
+  }
+  updateProduct(id: string, patch: Partial<Product>): Product | undefined {
+    const cur = this.products.get(id);
+    if (!cur) return undefined;
+    const next = { ...cur, ...patch, id };
+    this.products.set(id, next);
+    return next;
+  }
+
+  listModules(productId: string): Module[] {
+    return [...this.modules.values()].filter((x) => x.productId === productId);
+  }
+  getModule(id: string) {
+    return this.modules.get(id);
+  }
+  createModule(input: Omit<Module, "id">): Module {
+    const mo: Module = { ...input, id: `mod_${randomUUID().slice(0, 8)}` };
+    this.modules.set(mo.id, mo);
+    return mo;
+  }
+  updateModule(id: string, patch: Partial<Module>): Module | undefined {
+    const cur = this.modules.get(id);
+    if (!cur) return undefined;
+    const next = { ...cur, ...patch, id };
+    this.modules.set(id, next);
+    return next;
+  }
+  deleteModule(id: string): boolean {
+    return this.modules.delete(id);
+  }
+
+  listStrategies(productId: string): Strategy[] {
+    return [...this.strategies.values()].filter((x) => x.productId === productId);
+  }
+  listTiers(productId: string): Tier[] {
+    return [...this.tiers.values()].filter((x) => x.productId === productId);
+  }
+
+  listChangelog(productId: string): Changelog[] {
+    return [...this.changelog.values()]
+      .filter((x) => x.productId === productId)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+  createChangelog(input: Omit<Changelog, "id">): Changelog {
+    const cl: Changelog = { ...input, id: `cl_${randomUUID().slice(0, 8)}` };
+    this.changelog.set(cl.id, cl);
+    return cl;
+  }
+
+  listStatusFeed(productId: string): StatusFeed[] {
+    return [...this.statusFeed.values()].filter((x) => x.productId === productId);
+  }
+
+  listPages(): Page[] {
+    return [...this.pages.values()].sort((a, b) => a.title.localeCompare(b.title));
+  }
+  getPage(id: string) {
+    return this.pages.get(id);
+  }
+  getPageBySlug(slug: string) {
+    return [...this.pages.values()].find((p) => p.slug === slug);
+  }
+  createPage(input: Omit<Page, "id">): Page {
+    const pg: Page = { ...input, id: `pg_${randomUUID().slice(0, 8)}` };
+    this.pages.set(pg.id, pg);
+    return pg;
+  }
+  updatePage(id: string, patch: Partial<Page>): Page | undefined {
+    const cur = this.pages.get(id);
+    if (!cur) return undefined;
+    const next = { ...cur, ...patch, id };
+    this.pages.set(id, next);
+    return next;
+  }
+  deletePage(id: string): boolean {
+    return this.pages.delete(id);
+  }
+
+  listAudit(): AuditEntry[] {
+    return [...this.audit].sort((a, b) => b.ts.localeCompare(a.ts));
+  }
+  appendAudit(entry: Omit<AuditEntry, "id">): AuditEntry {
+    const a: AuditEntry = { ...entry, id: `au_${randomUUID().slice(0, 8)}` };
+    this.audit.push(a);
+    return a;
   }
 }
 

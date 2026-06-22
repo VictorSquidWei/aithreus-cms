@@ -2,12 +2,21 @@
 // demo configId ('site_dimers_tt') are deterministic. Passwords are dev-only (see README).
 import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
+import { buildContent } from "@/server/seed-content";
 import type {
   AnalyticsEvent,
+  AuditEntry,
+  Changelog,
   Client,
   LinkOverride,
+  Module,
   Operator,
+  Page,
+  Product,
   Site,
+  StatusFeed,
+  Strategy,
+  Tier,
   User,
   Vertical,
   WidgetInstance,
@@ -32,6 +41,14 @@ export interface Seed {
   widgetInstances: WidgetInstance[];
   overrides: LinkOverride[];
   events: AnalyticsEvent[];
+  products: Product[];
+  modules: Module[];
+  strategies: Strategy[];
+  tiers: Tier[];
+  changelog: Changelog[];
+  statusFeed: StatusFeed[];
+  pages: Page[];
+  audit: AuditEntry[];
 }
 
 export function buildSeed(): Seed {
@@ -129,6 +146,7 @@ export function buildSeed(): Seed {
     widgetInstances,
     overrides,
     events: generateEvents(sites, widgetInstances, operators),
+    ...buildContent(),
   };
 }
 
