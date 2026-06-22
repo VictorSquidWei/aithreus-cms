@@ -44,11 +44,11 @@
 
 | Spec | Title | Status | Traces to |
 |---|---|---|---|
-| [20-runtime/00-overview.md](20-runtime/00-overview.md) | Runtime overview: the no-redeploy loop, three artifacts | planned | Report §6 |
-| [20-runtime/01-config-endpoint.md](20-runtime/01-config-endpoint.md) | `GET /api/embed/config/:configId` (resolved, active-only) | planned | Report §6.1 |
-| [20-runtime/02-redirect-tracking.md](20-runtime/02-redirect-tracking.md) | `/r/:configId/:wid/:opId` redirect + events + postback | planned | Report §6.3 |
-| [20-runtime/03-embed-widget.md](20-runtime/03-embed-widget.md) | Framework-free `embed.js` + snippet | planned | Report §6.2, §6.4 |
-| [20-runtime/04-demo-client-site.md](20-runtime/04-demo-client-site.md) | `/demo/client-site` proving §9.14 loop | planned | Report §6.4, §9.14 |
+| [20-runtime/00-overview.md](20-runtime/00-overview.md) | Runtime overview: the no-redeploy loop, three artifacts | **implemented** | Report §6 |
+| [20-runtime/01-config-endpoint.md](20-runtime/01-config-endpoint.md) | `GET /api/embed/config/:configId` (resolved, active-only) | **implemented** | Report §6.1 |
+| [20-runtime/02-redirect-tracking.md](20-runtime/02-redirect-tracking.md) | `/r/:configId/:wid/:opId` redirect + events + postback | **implemented** | Report §6.3 |
+| [20-runtime/03-embed-widget.md](20-runtime/03-embed-widget.md) | Framework-free `embed.js` + snippet | **implemented** | Report §6.2, §6.4 |
+| [20-runtime/04-demo-client-site.md](20-runtime/04-demo-client-site.md) | `/demo/client-site` proving §9.14 loop | **implemented** | Report §6.4, §9.14 |
 
 ## Phase 5 — Presentation layer (`/specs/30-presentation/`) — *Layer A*
 
