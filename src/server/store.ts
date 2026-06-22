@@ -236,3 +236,8 @@ export function getStore(): DataStore {
   if (!g.__aithreusStore) g.__aithreusStore = new InMemoryStore();
   return g.__aithreusStore;
 }
+
+/** Dev/test only: re-seed the store to a clean state. */
+export function resetStore(): void {
+  g.__aithreusStore = new InMemoryStore();
+}

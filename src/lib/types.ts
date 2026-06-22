@@ -141,7 +141,8 @@ export interface PublishedConfig {
   siteId: string;
   configId: string;
   verticalKey: VerticalKey;
-  payload: ResolvedConfig;
+  payload: ResolvedConfig; // client-safe (no raw affiliate URLs)
+  targets: Record<string, string>; // server-only: `${widgetInstanceId}:${operatorId}` -> resolved affiliate URL (for the redirect)
   version: number;
   publishedByUserId: string;
   publishedAt: string;

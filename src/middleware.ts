@@ -9,6 +9,7 @@ function isPublic(pathname: string): boolean {
   if (PUBLIC_EXACT.has(pathname)) return true;
   return (
     pathname.startsWith("/api/embed") ||
+    pathname.startsWith("/api/dev") ||
     pathname.startsWith("/r/") ||
     pathname.startsWith("/widget") ||
     pathname.startsWith("/demo") ||

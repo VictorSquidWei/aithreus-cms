@@ -1,5 +1,18 @@
-import { ScreenPlaceholder } from "@/components/screen-placeholder";
+import { getViewer } from "@/server/session";
+import { getActiveVertical } from "@/server/vertical";
+import { getStore } from "@/server/store";
+import { PageContainer, PageHeader } from "@/components/page-container";
+import { OperatorsManager } from "@/components/link-cms/operators-manager";
 
-export default function Page() {
-  return <ScreenPlaceholder title="Operators" tag="Step 1" note="Operator CRUD + global active kill-switch — built in Phase 3 (specs/10-link-cms/02-operators.md)." />;
+export default async function OperatorsPage() {
+  const viewer = await getViewer();
+  const vertical = await getActiveVertical();
+  const operators = getStore().listOperators(vertical, viewer);
+
+  return (
+    <PageContainer>
+      <PageHeader title="Operators" subtitle={`Step 1 · ${vertical} · the affiliate-link source of truth`} />
+      <OperatorsManager operators={operators} />
+    </PageContainer>
+  );
 }

@@ -1,5 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
 
+test.beforeEach(async ({ request }) => {
+  await request.post("/api/dev/reset-store");
+});
+
 async function login(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByTestId("login-email").fill(email);

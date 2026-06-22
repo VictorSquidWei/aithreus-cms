@@ -19,9 +19,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionClaims, VerticalKey } from "@/lib/types";
-import { Logo, Wordmark } from "@/components/logo";
+import { Wordmark } from "@/components/logo";
 import { ProductSwitch } from "@/components/product-switch";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ToastProvider } from "@/components/ui/toast";
 import { logoutAction } from "@/server/actions/auth";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ size?: number }> };
@@ -180,6 +181,7 @@ export function AppShell({
 }) {
   const [drawer, setDrawer] = React.useState(false);
   return (
+    <ToastProvider>
     <div className="flex min-h-screen flex-col bg-bg">
       {/* Top bar */}
       <header
@@ -242,5 +244,6 @@ export function AppShell({
 
       <PublishBar />
     </div>
+    </ToastProvider>
   );
 }
