@@ -19,6 +19,7 @@ import type {
 } from "@/lib/types";
 import { scopeSitesToViewer, visibleOperators } from "@/server/visibility";
 import { buildSeed } from "@/server/seed-data";
+import { buildPublishedSnapshot } from "@/server/resolution";
 
 export interface SiteCounts {
   pages: number;
@@ -49,6 +50,27 @@ class InMemoryStore {
     for (const wi of seed.widgetInstances) this.widgetInstances.set(wi.id, wi);
     for (const ov of seed.overrides) this.overrides.set(ov.id, ov);
     this.events = seed.events ?? [];
+
+    // Pre-publish live sites so the runtime + /demo render immediately (seed-time publish).
+    for (const site of this.sites.values()) {
+      if (site.status !== "live") continue;
+      const snap = buildPublishedSnapshot(this, site);
+      const at = new Date().toISOString();
+      this.published.set(site.configId, [
+        {
+          id: `pc_${site.configId}_1`,
+          siteId: site.id,
+          configId: site.configId,
+          verticalKey: (this.getVerticalById(site.verticalId)?.key ?? "TT") as VerticalKey,
+          payload: snap.payload,
+          targets: snap.targets,
+          version: 1,
+          publishedByUserId: "seed",
+          publishedAt: at,
+        },
+      ]);
+      site.lastPublishedAt = at;
+    }
   }
 
   // ── identity ────────────────────────────────────────────────────────
