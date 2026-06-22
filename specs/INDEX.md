@@ -35,10 +35,10 @@
 | [10-link-cms/02-operators.md](10-link-cms/02-operators.md) | Step 1 — Operators (CRUD + active kill-switch) | **implemented** | Report §5.1; CMS-2 §4 (Step 1), §7 |
 | [10-link-cms/03-sites.md](10-link-cms/03-sites.md) | Step 2 — Sites (CRUD + configId + live counts) | **implemented** | Report §5.2; CMS-2 §4 (Step 2) |
 | [10-link-cms/04-edit-links.md](10-link-cms/04-edit-links.md) | Step 3 — Edit links + **resolution algorithm** | **implemented** | Report §5.3, §4.6; CMS-2 §2–§3, §4 (Step 3) |
-| [10-link-cms/05-embed-code.md](10-link-cms/05-embed-code.md) | Step 4 — Embed code (per-site config, per-widget snippet) | planned | Report §5.4; CMS-2 §4 (Step 4) |
-| [10-link-cms/06-widget-gallery.md](10-link-cms/06-widget-gallery.md) | Widget Gallery (preview + grab embed) | planned | Report §5.5; CMS-2 §5 |
-| [10-link-cms/07-performance.md](10-link-cms/07-performance.md) | Performance dashboard (views/clicks/CTR/conv/rev) | planned | Report §5.6; CMS-2 §5 |
-| [10-link-cms/08-publish-workflow.md](10-link-cms/08-publish-workflow.md) | Auto-save + "Publish to live widgets" + cache bust | planned | Report §5.7; CMS-2 §7 |
+| [10-link-cms/05-embed-code.md](10-link-cms/05-embed-code.md) | Step 4 — Embed code (per-site config, per-widget snippet) | **implemented** | Report §5.4; CMS-2 §4 (Step 4) |
+| [10-link-cms/06-widget-gallery.md](10-link-cms/06-widget-gallery.md) | Widget Gallery (preview + grab embed) | **implemented** | Report §5.5; CMS-2 §5 |
+| [10-link-cms/07-performance.md](10-link-cms/07-performance.md) | Performance dashboard (views/clicks/CTR/conv/rev) | **implemented** | Report §5.6; CMS-2 §5 |
+| [10-link-cms/08-publish-workflow.md](10-link-cms/08-publish-workflow.md) | Auto-save + "Publish to live widgets" + cache bust | **implemented** | Report §5.7; CMS-2 §7 |
 
 ## Phase 4 — Runtime trio + demo (`/specs/20-runtime/`) — *the headline proof*
 
