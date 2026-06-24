@@ -4,13 +4,22 @@ One unified Aithreus web property: a **gated B2B product-marketing site** (Layer
 
 > **This project is spec-driven.** The single source of truth is [`/specs`](specs/INDEX.md). No implementation lands without a governing, approved spec. Read [`specs/INDEX.md`](specs/INDEX.md) first.
 
-## ▶ Want to see it? Read [`DEMO.md`](DEMO.md)
+## ▶ Want to see it?
 
-`npm install && npm run dev`, open **http://localhost:3000**, log in with `client@dimers.com` / `client123`. [`DEMO.md`](DEMO.md) is a 10-minute guided walkthrough of every feature (incl. the headline "change a link → it's live on the client site with no redeploy" loop). The app is fully populated with demo data on every start.
+- **Run:** `npm install && npm run dev`, open **http://localhost:3000**, log in with `client@dimers.com` / `client123`.
+- **[GUIDE.md](GUIDE.md)** — what it is, how to navigate, how the demo works (start here).
+- **[DEMO.md](DEMO.md)** — a 10-minute click-by-click walkthrough script.
+- **[docs/engineering/](docs/engineering/README.md)** — endpoints, database, integration seams, deployment (for the engineering team).
+
+The app is fully populated with demo data on every start (no database required).
 
 ## Status
 
-Phases 1–6 complete: system specs, app shell + auth + product switch, the full **Link CMS** (operators, sites, edit-links/resolution, embed, gallery, performance, publish), the **embeddable widget runtime** + `/demo/client-site` (the §9.14 no-redeploy loop), the **presentation layer** (product pages, platform, integrations, status, docs), and the **content panel + audit log**. Acceptance criteria §9.1–§9.14 pass. Phase 7 (Postgres wiring + final polish) remains. See [`specs/INDEX.md`](specs/INDEX.md) for live status.
+**All phases complete (1–7).** System specs; app shell + auth + product switch; the full **Link CMS** (operators, sites, edit-links/resolution, embed, gallery, performance, publish); the **embeddable widget runtime** + `/demo/client-site` (the §9.14 no-redeploy loop); the **presentation layer**; the **content panel + audit log**; and the **Postgres/Drizzle persistence layer** (behind the async repository interface — set `DATABASE_URL` to switch from the in-memory demo store; runtime-verified via `npm run db:verify`). Acceptance criteria §9.1–§9.15 covered. See [`specs/INDEX.md`](specs/INDEX.md).
+
+## Database
+
+Runs on an in-memory store by default (zero setup). Set `DATABASE_URL` to use Postgres via Drizzle — no code changes. See **[docs/engineering/DATABASE.md](docs/engineering/DATABASE.md)**.
 
 ## Stack (see [`specs/00-product/01-architecture.md`](specs/00-product/01-architecture.md))
 
