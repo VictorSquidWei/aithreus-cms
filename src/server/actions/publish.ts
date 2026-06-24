@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { getSession, getViewer } from "@/server/session";
 import { getActiveVertical } from "@/server/vertical";
 import { getStore } from "@/server/store";
-import { buildPublishedSnapshot } from "@/server/resolution";
-import type { Site, VerticalKey } from "@/lib/types";
 import type { DataStore } from "@/server/store";
+import { buildPublishedSnapshot, ctaOperators, type PublishedSnapshot } from "@/server/resolution";
+import type { Site, VerticalKey } from "@/lib/types";
 
 export interface PublishDiff {
   sitesAffected: number;
@@ -19,7 +19,28 @@ async function context(): Promise<{ store: DataStore; sites: Site[] } | null> {
   if (viewer.role === "public") return null;
   const vertical = await getActiveVertical();
   const store = getStore();
-  return { store, sites: store.listSites(vertical, viewer) };
+  return { store, sites: await store.listSites(vertical, viewer) };
+}
+
+async function snapshotForSite(store: DataStore, site: Site): Promise<{ verticalKey: VerticalKey; snap: PublishedSnapshot }> {
+  const vertical = await store.getVerticalById(site.verticalId);
+  const verticalKey = (vertical?.key ?? "TT") as VerticalKey;
+  const [instances, rawOps, overrides, types] = await Promise.all([
+    store.listWidgetInstances(site.id),
+    store.rawOperators(verticalKey),
+    store.listOverrides(site.id),
+    store.listWidgetTypes(verticalKey),
+  ]);
+  const typeById = new Map(types.map((t) => [t.id, t]));
+  const snap = buildPublishedSnapshot({
+    site,
+    verticalKey,
+    instances,
+    widgetTypeById: (id) => typeById.get(id),
+    activeOps: ctaOperators(rawOps),
+    overrides,
+  });
+  return { verticalKey, snap };
 }
 
 function diffTargets(prev: Record<string, string> | undefined, next: Record<string, string>): number {
@@ -36,9 +57,9 @@ export async function computePublishDiffAction(): Promise<PublishDiff> {
   let changedLinks = 0;
   const perSite: { domain: string; changed: number }[] = [];
   for (const site of sites) {
-    const next = buildPublishedSnapshot(store, site).targets;
-    const published = store.getLatestPublished(site.configId);
-    const changed = diffTargets(published?.targets, next);
+    const { snap } = await snapshotForSite(store, site);
+    const published = await store.getLatestPublished(site.configId);
+    const changed = diffTargets(published?.targets, snap.targets);
     if (changed > 0 || !published) perSite.push({ domain: site.domain, changed });
     changedLinks += changed;
   }
@@ -54,23 +75,23 @@ export async function publishAllAction(): Promise<{ ok: true; diff: PublishDiff 
   const now = new Date().toISOString();
 
   for (const site of sites) {
-    const snap = buildPublishedSnapshot(store, site);
-    const version = store.nextPublishVersion(site.configId);
-    store.putPublished({
+    const { verticalKey, snap } = await snapshotForSite(store, site);
+    const version = await store.nextPublishVersion(site.configId);
+    await store.putPublished({
       id: `pc_${site.configId}_${version}`,
       siteId: site.id,
       configId: site.configId,
-      verticalKey: (store.getVerticalById(site.verticalId)?.key ?? "TT") as VerticalKey,
+      verticalKey,
       payload: snap.payload,
       targets: snap.targets,
       version,
       publishedByUserId: session?.userId ?? "system",
       publishedAt: now,
     });
-    store.updateSite(site.id, { lastPublishedAt: now });
+    await store.updateSite(site.id, { lastPublishedAt: now });
   }
 
-  store.appendAudit({
+  await store.appendAudit({
     ts: now,
     actorId: session?.userId ?? "system",
     actorName: session?.name ?? "System",

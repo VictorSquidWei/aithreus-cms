@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
   }
 
   const store = getStore();
-  const site = store.getSiteByConfigId(configId);
+  const site = await store.getSiteByConfigId(configId);
   if (site) {
-    store.appendEvent({
+    await store.appendEvent({
       type: "impression",
       configId,
       siteId: site.id,

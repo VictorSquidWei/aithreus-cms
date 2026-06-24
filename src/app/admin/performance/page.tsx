@@ -14,19 +14,21 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
   const viewer = await getViewer();
   const vertical = await getActiveVertical();
   const store = getStore();
-  const sites = store.listSites(vertical, viewer);
+  const sites = await store.listSites(vertical, viewer);
   const siteIds = new Set(sites.map((s) => s.id));
   const sp = await searchParams;
   const selected = sp.site && siteIds.has(sp.site) ? sp.site! : null;
 
-  const v = store.getVerticalByKey(vertical);
-  let events = store.listEvents().filter((e) => e.verticalId === v?.id && siteIds.has(e.siteId));
+  const v = await store.getVerticalByKey(vertical);
+  const allEvents = await store.listEvents();
+  let events = allEvents.filter((e) => e.verticalId === v?.id && siteIds.has(e.siteId));
   if (selected) events = events.filter((e) => e.siteId === selected);
 
+  const opName = new Map((await store.rawOperators(vertical)).map((o) => [o.id, o.name]));
   const t = totals(events);
   const byDay = rollupByDay(events);
   const byOp = rollupByOperator(events).map((r) => ({
-    operatorName: store.getOperator(r.operatorId)?.name ?? r.operatorId,
+    operatorName: opName.get(r.operatorId) ?? r.operatorId,
     impressions: r.impressions,
     clicks: r.clicks,
     ctr: r.ctr,

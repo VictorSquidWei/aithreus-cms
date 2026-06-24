@@ -15,7 +15,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   const password = String(formData.get("password") ?? "");
   const next = String(formData.get("next") ?? "");
 
-  const user = getStore().getUserByEmail(email);
+  const user = await getStore().getUserByEmail(email);
   if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
     return { error: "Invalid email or password" };
   }

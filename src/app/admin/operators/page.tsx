@@ -7,7 +7,7 @@ import { OperatorsManager } from "@/components/link-cms/operators-manager";
 export default async function OperatorsPage() {
   const viewer = await getViewer();
   const vertical = await getActiveVertical();
-  const operators = getStore().listOperators(vertical, viewer);
+  const operators = await getStore().listOperators(vertical, viewer);
 
   return (
     <PageContainer>

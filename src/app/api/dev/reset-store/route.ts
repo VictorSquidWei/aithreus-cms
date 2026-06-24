@@ -6,6 +6,6 @@ export async function POST() {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json({ ok: false, error: "disabled in production" }, { status: 403 });
   }
-  resetStore();
+  await resetStore();
   return NextResponse.json({ ok: true });
 }

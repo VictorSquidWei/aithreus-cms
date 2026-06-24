@@ -15,7 +15,7 @@ async function authorizeSite(siteId: string): Promise<Authorized> {
   const viewer = await getViewer();
   if (viewer.role === "public") return { ok: false, error: "Not permitted" };
   const store = getStore();
-  const site = store.getSite(siteId);
+  const site = await store.getSite(siteId);
   if (!site) return { ok: false, error: "Site not found" };
   if (!canAccessClient(viewer, site.clientId)) return { ok: false, error: "Not permitted" };
   return { ok: true, store, site };
@@ -30,7 +30,7 @@ export async function upsertOverrideAction(
   const auth = await authorizeSite(siteId);
   if (!auth.ok) return { ok: false, error: auth.error };
   if (!isValidHttpUrl(url)) return { ok: false, error: "Enter a valid http(s) URL" };
-  auth.store.upsertOverride(siteId, widgetInstanceId, operatorId, url.trim());
+  await auth.store.upsertOverride(siteId, widgetInstanceId, operatorId, url.trim());
   revalidatePath("/admin/links");
   revalidatePath("/admin/sites");
   return { ok: true };
@@ -43,7 +43,7 @@ export async function resetOverrideAction(
 ): Promise<ActionResult> {
   const auth = await authorizeSite(siteId);
   if (!auth.ok) return { ok: false, error: auth.error };
-  auth.store.deleteOverride(siteId, widgetInstanceId, operatorId);
+  await auth.store.deleteOverride(siteId, widgetInstanceId, operatorId);
   revalidatePath("/admin/links");
   revalidatePath("/admin/sites");
   return { ok: true };

@@ -10,8 +10,8 @@ import { WidgetPreviewFrame } from "@/components/link-cms/widget-preview-frame";
 export default async function GalleryPage() {
   const vertical = await getActiveVertical();
   const store = getStore();
-  const types = store.listWidgetTypes(vertical);
-  const activeOps = ctaOperators(store, vertical);
+  const [types, rawOps] = await Promise.all([store.listWidgetTypes(vertical), store.rawOperators(vertical)]);
+  const activeOps = ctaOperators(rawOps);
 
   return (
     <PageContainer>

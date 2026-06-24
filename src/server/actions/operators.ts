@@ -39,13 +39,14 @@ export async function createOperatorAction(input: OperatorInput): Promise<Action
   const err = validate(input);
   if (err) return { ok: false, error: err };
 
-  const v = store.getVerticalByKey(vertical);
+  const v = await store.getVerticalByKey(vertical);
   if (!v) return { ok: false, error: "Unknown vertical" };
-  const dup = store.rawOperators(vertical).some((o) => o.name.toLowerCase() === input.name.trim().toLowerCase());
-  if (dup) return { ok: false, error: "An operator with that name already exists in this vertical" };
+  if (await store.operatorExists(v.id, input.name.trim())) {
+    return { ok: false, error: "An operator with that name already exists in this vertical" };
+  }
 
   const defaultCategory: OperatorCategory = vertical === "VNX" ? "execution" : "odds";
-  store.createOperator({
+  await store.createOperator({
     verticalId: v.id,
     name: input.name.trim(),
     slug: slugify(input.name),
@@ -69,18 +70,17 @@ export async function createOperatorAction(input: OperatorInput): Promise<Action
 export async function updateOperatorAction(id: string, input: OperatorInput): Promise<ActionResult> {
   const viewer = await requireUser();
   const store = getStore();
-  const op = store.getOperator(id);
+  const op = await store.getOperator(id);
   if (!op) return { ok: false, error: "Operator not found" };
   if (op.internalOnly && !isInternal(viewer)) return { ok: false, error: "Not permitted" };
   const err = validate(input);
   if (err) return { ok: false, error: err };
 
-  const dup = [...store.operators.values()].some(
-    (o) => o.id !== id && o.verticalId === op.verticalId && o.name.toLowerCase() === input.name.trim().toLowerCase(),
-  );
-  if (dup) return { ok: false, error: "An operator with that name already exists in this vertical" };
+  if (await store.operatorExists(op.verticalId, input.name.trim(), id)) {
+    return { ok: false, error: "An operator with that name already exists in this vertical" };
+  }
 
-  store.updateOperator(id, {
+  await store.updateOperator(id, {
     name: input.name.trim(),
     slug: slugify(input.name),
     buttonLabel: input.buttonLabel.trim(),
@@ -96,10 +96,10 @@ export async function updateOperatorAction(id: string, input: OperatorInput): Pr
 export async function setOperatorActiveAction(id: string, active: boolean): Promise<ActionResult> {
   const viewer = await requireUser();
   const store = getStore();
-  const op = store.getOperator(id);
+  const op = await store.getOperator(id);
   if (!op) return { ok: false, error: "Operator not found" };
   if (op.internalOnly && !isInternal(viewer)) return { ok: false, error: "Not permitted" };
-  store.updateOperator(id, { active });
+  await store.updateOperator(id, { active });
   revalidatePath("/admin/operators");
   revalidatePath("/admin");
   return { ok: true };
@@ -108,10 +108,10 @@ export async function setOperatorActiveAction(id: string, active: boolean): Prom
 export async function deleteOperatorAction(id: string): Promise<ActionResult> {
   const viewer = await requireUser();
   const store = getStore();
-  const op = store.getOperator(id);
+  const op = await store.getOperator(id);
   if (!op) return { ok: false, error: "Operator not found" };
   if (op.internalOnly && !isInternal(viewer)) return { ok: false, error: "Not permitted" };
-  store.deleteOperator(id);
+  await store.deleteOperator(id);
   revalidatePath("/admin/operators");
   revalidatePath("/admin");
   return { ok: true };

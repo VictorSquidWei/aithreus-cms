@@ -26,16 +26,20 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const viewer = await getViewer();
   const store = getStore();
-  const product = store.getProductBySlug(slug);
+  const product = await store.getProductBySlug(slug);
   if (!product) notFound();
 
-  const vertical = store.getVerticalById(product.verticalId);
+  const vertical = await store.getVerticalById(product.verticalId);
   const vkey = (vertical?.key ?? "TT") as VerticalKey;
-  const modules = visibleModules(store.listModules(product.id), viewer);
-  const strategies = store.listStrategies(product.id);
-  const operators = store.listOperators(vkey, viewer);
-  const changelog = store.listChangelog(product.id);
-  const metrics = store.listStatusFeed(product.id).filter((s) => !s.metricKey.startsWith("health:"));
+  const [modulesRaw, strategies, operators, changelog, statusAll] = await Promise.all([
+    store.listModules(product.id),
+    store.listStrategies(product.id),
+    store.listOperators(vkey, viewer),
+    store.listChangelog(product.id),
+    store.listStatusFeed(product.id),
+  ]);
+  const modules = visibleModules(modulesRaw, viewer);
+  const metrics = statusAll.filter((s) => !s.metricKey.startsWith("health:"));
 
   return (
     <PageContainer>

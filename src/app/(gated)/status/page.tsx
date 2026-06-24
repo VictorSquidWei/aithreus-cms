@@ -8,14 +8,14 @@ export const metadata = { title: "Status" };
 
 export default async function StatusPage() {
   const store = getStore();
-  const products = store.listProducts();
+  const products = await store.listProducts();
+  const rows = await Promise.all(products.map(async (p) => ({ p, all: await store.listStatusFeed(p.id) })));
 
   return (
     <PageContainer>
       <PageHeader title="Status" subtitle="Live product & system health — read-only." />
       <div className="flex flex-col gap-4">
-        {products.map((p) => {
-          const all = store.listStatusFeed(p.id);
+        {rows.map(({ p, all }) => {
           const metrics = all.filter((s) => !s.metricKey.startsWith("health:"));
           const health: HealthComponent[] = all
             .filter((s) => s.metricKey.startsWith("health:"))

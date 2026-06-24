@@ -6,7 +6,7 @@ import { PageContainer, PageHeader } from "@/components/page-container";
 export const metadata = { title: "Docs" };
 
 export default async function DocsPage() {
-  const pages = getStore().listPages();
+  const pages = await getStore().listPages();
   return (
     <PageContainer>
       <PageHeader title="Docs" subtitle="Guides and reference — managed in the CMS." />

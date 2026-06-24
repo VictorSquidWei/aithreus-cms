@@ -8,7 +8,8 @@ export default async function SitesPage() {
   const viewer = await getViewer();
   const vertical = await getActiveVertical();
   const store = getStore();
-  const sites = store.listSites(vertical, viewer).map((site) => ({ site, counts: store.siteCounts(site.id) }));
+  const siteList = await store.listSites(vertical, viewer);
+  const sites = await Promise.all(siteList.map(async (site) => ({ site, counts: await store.siteCounts(site.id) })));
 
   return (
     <PageContainer>

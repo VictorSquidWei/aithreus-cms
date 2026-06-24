@@ -11,13 +11,18 @@ export default async function AdminDashboard() {
   const vertical = await getActiveVertical();
   const store = getStore();
 
-  const v = store.getVerticalByKey(vertical);
-  const operators = store.listOperators(vertical, viewer);
-  const sites = store.listSites(vertical, viewer);
-  const instances = sites.flatMap((s) => store.listWidgetInstances(s.id));
+  const v = await store.getVerticalByKey(vertical);
+  const [operators, sites] = await Promise.all([
+    store.listOperators(vertical, viewer),
+    store.listSites(vertical, viewer),
+  ]);
+  const instanceLists = await Promise.all(sites.map((site) => store.listWidgetInstances(site.id)));
+  const instances = instanceLists.flat();
   const activeOps = operators.filter((o) => o.active).length;
   const clientName =
-    viewer.role === "affiliate_client" ? (store.getClientById(viewer.clientId)?.name ?? "Your client") : "All clients";
+    viewer.role === "affiliate_client"
+      ? ((await store.getClientById(viewer.clientId))?.name ?? "Your client")
+      : "All clients";
 
   const kpis = [
     { label: "Operators", value: operators.length, icon: Plug },

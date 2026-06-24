@@ -12,8 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const vertical = await getActiveVertical();
   const viewer: Viewer = { role: session.role, clientId: session.clientId };
   const store = getStore();
-  const times = store
-    .listSites(vertical, viewer)
+  const times = (await store.listSites(vertical, viewer))
     .map((s) => s.lastPublishedAt)
     .filter((t): t is string => !!t)
     .sort();

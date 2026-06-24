@@ -23,10 +23,10 @@ export async function POST(req: NextRequest) {
   }
 
   const store = getStore();
-  const site = store.getSiteByConfigId(configId);
+  const site = await store.getSiteByConfigId(configId);
   if (site) {
-    const value = typeof body.value === "number" ? body.value : (store.getOperator(operatorId)?.estPayout ?? 50);
-    store.appendEvent({
+    const value = typeof body.value === "number" ? body.value : ((await store.getOperator(operatorId))?.estPayout ?? 50);
+    await store.appendEvent({
       type: "conversion",
       configId,
       siteId: site.id,

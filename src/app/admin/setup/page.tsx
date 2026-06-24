@@ -12,10 +12,14 @@ export default async function SetupPage() {
   const vertical = await getActiveVertical();
   const store = getStore();
 
-  const operators = store.listOperators(vertical, viewer).filter((o) => o.active);
-  const sites = store.listSites(vertical, viewer);
-  const overrides = sites.reduce((n, s) => n + store.listOverrides(s.id).length, 0);
-  const published = sites.some((s) => !!s.lastPublishedAt);
+  const [operatorsAll, sites] = await Promise.all([
+    store.listOperators(vertical, viewer),
+    store.listSites(vertical, viewer),
+  ]);
+  const operators = operatorsAll.filter((o) => o.active);
+  const overrideLists = await Promise.all(sites.map((site) => store.listOverrides(site.id)));
+  const overrides = overrideLists.reduce((n, arr) => n + arr.length, 0);
+  const published = sites.some((site) => !!site.lastPublishedAt);
 
   const steps = [
     { n: 1, label: "Add operators", href: "/admin/operators", desc: "Add every affiliate deal with its base URL.", done: operators.length > 0 },

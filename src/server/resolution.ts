@@ -1,16 +1,17 @@
 // The canonical link-resolution algorithm — specs/10-link-cms/04-edit-links.md §2 (Report §4.6).
-// Shared by Edit Links (admin), Publish, the config endpoint, and the redirect.
+// PURE functions over plain data (no store dependency) so they work identically for the
+// in-memory and Drizzle backends, and can run synchronously at seed time.
 import type {
+  LinkOverride,
   Operator,
-  ResolvedCta,
   ResolvedConfig,
+  ResolvedCta,
   ResolvedWidget,
   Site,
   VerticalKey,
   WidgetInstance,
   WidgetType,
 } from "@/lib/types";
-import type { DataStore } from "@/server/store";
 import { publicOperators } from "@/server/visibility";
 
 export type LinkState = "INHERITED" | "CUSTOM";
@@ -22,26 +23,20 @@ export interface ResolvedSlot {
   active: boolean;
 }
 
-/** Active, non-internalOnly operators for a vertical, name-sorted. These get CTA slots. */
-export function ctaOperators(store: DataStore, vertical: VerticalKey): Operator[] {
-  return publicOperators(store.rawOperators(vertical)).sort((a, b) => a.name.localeCompare(b.name));
+/** Active, non-internalOnly operators for a vertical, name-sorted — these get CTA slots. */
+export function ctaOperators(operators: Operator[]): Operator[] {
+  return publicOperators(operators).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Step 2/3 of the algorithm: override → CUSTOM, else operator default → INHERITED. */
-export function resolveSlot(
-  store: DataStore,
-  site: Site,
-  widgetInstanceId: string,
-  operator: Operator,
-): { state: LinkState; url: string } {
-  const override = store.findOverride(site.id, widgetInstanceId, operator.id);
-  if (override) return { state: "CUSTOM", url: override.affiliateUrl };
-  return { state: "INHERITED", url: operator.affiliateUrl };
-}
-
-/** Which operators get a slot for a widget: single → first active; multi → all active (data-driven). */
+/** single → first active operator; multi → all active (data-driven, CMS-2 §3). */
 export function slotOperatorsForWidget(activeOps: Operator[], type: WidgetType): Operator[] {
   return type.ctaMode === "multi" ? activeOps : activeOps.slice(0, 1);
+}
+
+function overrideMap(overrides: LinkOverride[]): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const o of overrides) m.set(`${o.widgetInstanceId}:${o.operatorId}`, o.affiliateUrl);
+  return m;
 }
 
 export interface ResolvedWidgetAdmin {
@@ -50,46 +45,49 @@ export interface ResolvedWidgetAdmin {
   rows: ResolvedSlot[];
 }
 
-/** Admin view (Edit Links): every widget instance on a site with per-operator resolved rows. */
-export function resolveWidgetsForSiteAdmin(store: DataStore, site: Site): ResolvedWidgetAdmin[] {
-  const vertical = store.getVerticalById(site.verticalId)?.key as VerticalKey;
-  const activeOps = ctaOperators(store, vertical);
-  return store.listWidgetInstances(site.id).map((instance) => {
-    const type = store.getWidgetType(instance.widgetTypeId)!;
-    const ops = slotOperatorsForWidget(activeOps, type);
-    const rows = ops.map((op): ResolvedSlot => {
-      const r = resolveSlot(store, site, instance.id, op);
-      return { operator: op, state: r.state, resolvedUrl: r.url, active: op.active };
+export interface ResolveArgs {
+  site: Site;
+  verticalKey: VerticalKey;
+  instances: WidgetInstance[];
+  widgetTypeById: (id: string) => WidgetType | undefined;
+  activeOps: Operator[]; // already passed through ctaOperators()
+  overrides: LinkOverride[];
+}
+
+/** Admin view (Edit Links): per widget instance, per-operator resolved rows. */
+export function resolveWidgetsForSiteAdmin(args: Omit<ResolveArgs, "site" | "verticalKey">): ResolvedWidgetAdmin[] {
+  const om = overrideMap(args.overrides);
+  const out: ResolvedWidgetAdmin[] = [];
+  for (const instance of args.instances) {
+    const type = args.widgetTypeById(instance.widgetTypeId);
+    if (!type) continue;
+    const rows = slotOperatorsForWidget(args.activeOps, type).map((op): ResolvedSlot => {
+      const custom = om.get(`${instance.id}:${op.id}`);
+      return { operator: op, state: custom ? "CUSTOM" : "INHERITED", resolvedUrl: custom ?? op.affiliateUrl, active: op.active };
     });
-    return { instance, type, rows };
-  });
+    out.push({ instance, type, rows });
+  }
+  return out;
 }
 
 export interface PublishedSnapshot {
-  payload: ResolvedConfig; // served to the client (no raw URLs)
+  payload: ResolvedConfig; // client-safe (no raw URLs)
   targets: Record<string, string>; // server-only: `${wid}:${opId}` -> affiliate URL (redirect resolves these)
 }
 
 /** Build the published runtime snapshot for a site. CTA hrefs are tracking redirects. */
-export function buildPublishedSnapshot(store: DataStore, site: Site): PublishedSnapshot {
-  const vertical = store.getVerticalById(site.verticalId)?.key as VerticalKey;
-  const activeOps = ctaOperators(store, vertical);
+export function buildPublishedSnapshot(args: ResolveArgs): PublishedSnapshot {
+  const om = overrideMap(args.overrides);
   const widgets: Record<string, ResolvedWidget> = {};
   const targets: Record<string, string> = {};
 
-  for (const instance of store.listWidgetInstances(site.id)) {
-    const type = store.getWidgetType(instance.widgetTypeId);
+  for (const instance of args.instances) {
+    const type = args.widgetTypeById(instance.widgetTypeId);
     if (!type) continue;
-    const ops = slotOperatorsForWidget(activeOps, type);
-    const ctas: ResolvedCta[] = ops.map((op) => {
-      const { url } = resolveSlot(store, site, instance.id, op);
+    const ctas: ResolvedCta[] = slotOperatorsForWidget(args.activeOps, type).map((op) => {
+      const url = om.get(`${instance.id}:${op.id}`) ?? op.affiliateUrl;
       targets[`${instance.id}:${op.id}`] = url;
-      return {
-        operatorId: op.id,
-        label: op.buttonLabel,
-        color: op.brandColor,
-        href: `/r/${site.configId}/${instance.id}/${op.id}`,
-      };
+      return { operatorId: op.id, label: op.buttonLabel, color: op.brandColor, href: `/r/${args.site.configId}/${instance.id}/${op.id}` };
     });
     widgets[instance.id] = {
       widgetInstanceId: instance.id,
@@ -102,9 +100,9 @@ export function buildPublishedSnapshot(store: DataStore, site: Site): PublishedS
   }
 
   const payload: ResolvedConfig = {
-    configId: site.configId,
-    vertical,
-    operators: activeOps.map((o) => ({
+    configId: args.site.configId,
+    vertical: args.verticalKey,
+    operators: args.activeOps.map((o) => ({
       id: o.id,
       name: o.name,
       buttonLabel: o.buttonLabel,

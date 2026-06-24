@@ -2,7 +2,7 @@ import { getStore } from "@/server/store";
 import { PageContainer, PageHeader } from "@/components/page-container";
 
 export default async function AuditPage() {
-  const audit = getStore().listAudit();
+  const audit = await getStore().listAudit();
   return (
     <PageContainer>
       <PageHeader title="Audit log" subtitle="Publishes and content edits." />

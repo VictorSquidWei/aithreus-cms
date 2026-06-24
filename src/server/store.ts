@@ -1,7 +1,6 @@
-// In-memory DataStore (specs/00-product/01-architecture.md D4). Postgres/Drizzle drops
-// in behind the same shape in Phase 7 with zero UI changes. State is cached on globalThis
-// so it survives Next HMR / persists for the server-process lifetime — this is what makes
-// the §9.14 change→Publish→reload loop work before Postgres exists (D6).
+// Repository interface (async) — specs/00-product/01-architecture.md D4.
+// InMemoryStore is the zero-setup default (demo). DrizzleStore (store-drizzle.ts) implements
+// the SAME async shape against Postgres and is selected when DATABASE_URL is set.
 import { randomUUID } from "node:crypto";
 import type {
   AnalyticsEvent,
@@ -27,145 +26,158 @@ import type {
 } from "@/lib/types";
 import { scopeSitesToViewer, visibleOperators } from "@/server/visibility";
 import { buildSeed } from "@/server/seed-data";
-import { buildPublishedSnapshot } from "@/server/resolution";
+import { buildPublishedSnapshot, ctaOperators } from "@/server/resolution";
+import type { DataStore, SiteCounts } from "@/server/data-store";
+import { createDrizzleStore } from "@/server/store-drizzle";
 
-export interface SiteCounts {
-  pages: number;
-  links: number; // widget instances
-  overrides: number;
-}
+export type { DataStore, SiteCounts };
 
-class InMemoryStore {
-  clients = new Map<string, Client>();
-  users = new Map<string, User>();
-  verticals = new Map<string, Vertical>();
-  operators = new Map<string, Operator>();
-  sites = new Map<string, Site>();
-  widgetTypes = new Map<string, WidgetType>();
-  widgetInstances = new Map<string, WidgetInstance>();
-  overrides = new Map<string, LinkOverride>();
-  published = new Map<string, PublishedConfig[]>(); // configId -> versions
-  events: AnalyticsEvent[] = [];
-  products = new Map<string, Product>();
-  modules = new Map<string, Module>();
-  strategies = new Map<string, Strategy>();
-  tiers = new Map<string, Tier>();
-  changelog = new Map<string, Changelog>();
-  statusFeed = new Map<string, StatusFeed>();
-  pages = new Map<string, Page>();
-  audit: AuditEntry[] = [];
+class InMemoryStore implements DataStore {
+  private clients = new Map<string, Client>();
+  private users = new Map<string, User>();
+  private verticals = new Map<string, Vertical>();
+  private operators = new Map<string, Operator>();
+  private sites = new Map<string, Site>();
+  private widgetTypes = new Map<string, WidgetType>();
+  private widgetInstances = new Map<string, WidgetInstance>();
+  private overrides = new Map<string, LinkOverride>();
+  private published = new Map<string, PublishedConfig[]>();
+  private events: AnalyticsEvent[] = [];
+  private products = new Map<string, Product>();
+  private modules = new Map<string, Module>();
+  private strategies = new Map<string, Strategy>();
+  private tiers = new Map<string, Tier>();
+  private changelog = new Map<string, Changelog>();
+  private statusFeed = new Map<string, StatusFeed>();
+  private pages = new Map<string, Page>();
+  private auditLog: AuditEntry[] = [];
 
   constructor() {
+    this.loadSeed();
+  }
+
+  async reset(): Promise<void> {
+    this.loadSeed();
+  }
+
+  private loadSeed() {
     const seed = buildSeed();
-    for (const c of seed.clients) this.clients.set(c.id, c);
-    for (const u of seed.users) this.users.set(u.id, u);
-    for (const v of seed.verticals) this.verticals.set(v.id, v);
-    for (const o of seed.operators) this.operators.set(o.id, o);
-    for (const s of seed.sites) this.sites.set(s.id, s);
-    for (const w of seed.widgetTypes) this.widgetTypes.set(w.id, w);
-    for (const wi of seed.widgetInstances) this.widgetInstances.set(wi.id, wi);
-    for (const ov of seed.overrides) this.overrides.set(ov.id, ov);
-    this.events = seed.events ?? [];
-    for (const p of seed.products) this.products.set(p.id, p);
-    for (const x of seed.modules) this.modules.set(x.id, x);
-    for (const x of seed.strategies) this.strategies.set(x.id, x);
-    for (const x of seed.tiers) this.tiers.set(x.id, x);
-    for (const x of seed.changelog) this.changelog.set(x.id, x);
-    for (const x of seed.statusFeed) this.statusFeed.set(x.id, x);
-    for (const x of seed.pages) this.pages.set(x.id, x);
-    this.audit = seed.audit ?? [];
+    const fill = <T extends { id: string }>(map: Map<string, T>, rows: T[]) => {
+      map.clear();
+      for (const r of rows) map.set(r.id, r);
+    };
+    fill(this.clients, seed.clients);
+    fill(this.users, seed.users);
+    fill(this.verticals, seed.verticals);
+    fill(this.operators, seed.operators);
+    fill(this.sites, seed.sites);
+    fill(this.widgetTypes, seed.widgetTypes);
+    fill(this.widgetInstances, seed.widgetInstances);
+    fill(this.overrides, seed.overrides);
+    fill(this.products, seed.products);
+    fill(this.modules, seed.modules);
+    fill(this.strategies, seed.strategies);
+    fill(this.tiers, seed.tiers);
+    fill(this.changelog, seed.changelog);
+    fill(this.statusFeed, seed.statusFeed);
+    fill(this.pages, seed.pages);
+    this.events = [...seed.events];
+    this.auditLog = [...seed.audit];
+    this.published.clear();
 
     // Pre-publish live sites so the runtime + /demo render immediately (seed-time publish).
-    for (const site of this.sites.values()) {
-      if (site.status !== "live") continue;
-      const snap = buildPublishedSnapshot(this, site);
+    for (const site of [...this.sites.values()].filter((s) => s.status === "live")) {
+      const vertical = [...this.verticals.values()].find((v) => v.id === site.verticalId);
+      const verticalKey = (vertical?.key ?? "TT") as VerticalKey;
+      const snap = buildPublishedSnapshot({
+        site,
+        verticalKey,
+        instances: [...this.widgetInstances.values()].filter((w) => w.siteId === site.id),
+        widgetTypeById: (id) => this.widgetTypes.get(id),
+        activeOps: ctaOperators([...this.operators.values()].filter((o) => o.verticalId === site.verticalId)),
+        overrides: [...this.overrides.values()].filter((o) => o.siteId === site.id),
+      });
       const at = new Date().toISOString();
       this.published.set(site.configId, [
-        {
-          id: `pc_${site.configId}_1`,
-          siteId: site.id,
-          configId: site.configId,
-          verticalKey: (this.getVerticalById(site.verticalId)?.key ?? "TT") as VerticalKey,
-          payload: snap.payload,
-          targets: snap.targets,
-          version: 1,
-          publishedByUserId: "seed",
-          publishedAt: at,
-        },
+        { id: `pc_${site.configId}_1`, siteId: site.id, configId: site.configId, verticalKey, payload: snap.payload, targets: snap.targets, version: 1, publishedByUserId: "seed", publishedAt: at },
       ]);
       site.lastPublishedAt = at;
     }
   }
 
-  // ── identity ────────────────────────────────────────────────────────
-  getUserByEmail(email: string) {
+  private verticalIdOf(key: VerticalKey): string | undefined {
+    return [...this.verticals.values()].find((v) => v.key === key)?.id;
+  }
+
+  // ── identity ──
+  async getUserByEmail(email: string) {
     return [...this.users.values()].find((u) => u.email.toLowerCase() === email.toLowerCase());
   }
-  getUserById(id: string) {
+  async getUserById(id: string) {
     return this.users.get(id);
   }
-  getClientById(id: string) {
+  async getClientById(id: string) {
     return this.clients.get(id);
   }
 
-  // ── verticals ───────────────────────────────────────────────────────
-  listVerticals() {
+  // ── verticals ──
+  async listVerticals() {
     return [...this.verticals.values()];
   }
-  getVerticalByKey(key: VerticalKey) {
+  async getVerticalByKey(key: VerticalKey) {
     return [...this.verticals.values()].find((v) => v.key === key);
   }
-  getVerticalById(id: string) {
+  async getVerticalById(id: string) {
     return this.verticals.get(id);
   }
-  private verticalId(key: VerticalKey) {
-    return this.getVerticalByKey(key)?.id;
-  }
 
-  // ── operators (admin reads: keep inactive, filter internalOnly by viewer) ──
-  listOperators(key: VerticalKey, viewer: Viewer): Operator[] {
-    const vid = this.verticalId(key);
-    const rows = [...this.operators.values()].filter((o) => o.verticalId === vid);
-    rows.sort((a, b) => a.name.localeCompare(b.name));
+  // ── operators ──
+  async listOperators(key: VerticalKey, viewer: Viewer): Promise<Operator[]> {
+    const vid = this.verticalIdOf(key);
+    const rows = [...this.operators.values()].filter((o) => o.verticalId === vid).sort((a, b) => a.name.localeCompare(b.name));
     return visibleOperators(rows, viewer);
   }
-  /** Raw operators for a vertical (no viewer filter) — used by the runtime resolver. */
-  rawOperators(key: VerticalKey): Operator[] {
-    const vid = this.verticalId(key);
+  async rawOperators(key: VerticalKey): Promise<Operator[]> {
+    const vid = this.verticalIdOf(key);
     return [...this.operators.values()].filter((o) => o.verticalId === vid);
   }
-  getOperator(id: string) {
+  async getOperator(id: string) {
     return this.operators.get(id);
   }
-  createOperator(input: Omit<Operator, "id">): Operator {
+  async createOperator(input: Omit<Operator, "id">): Promise<Operator> {
     const op: Operator = { ...input, id: `op_${randomUUID().slice(0, 8)}` };
     this.operators.set(op.id, op);
     return op;
   }
-  updateOperator(id: string, patch: Partial<Operator>): Operator | undefined {
+  async updateOperator(id: string, patch: Partial<Operator>): Promise<Operator | undefined> {
     const cur = this.operators.get(id);
     if (!cur) return undefined;
     const next = { ...cur, ...patch, id };
     this.operators.set(id, next);
     return next;
   }
-  deleteOperator(id: string): boolean {
+  async deleteOperator(id: string): Promise<boolean> {
     return this.operators.delete(id);
   }
+  async operatorExists(verticalId: string, name: string, exceptId?: string): Promise<boolean> {
+    return [...this.operators.values()].some(
+      (o) => o.id !== exceptId && o.verticalId === verticalId && o.name.toLowerCase() === name.toLowerCase(),
+    );
+  }
 
-  // ── sites (scoped to client + vertical) ─────────────────────────────
-  listSites(key: VerticalKey, viewer: Viewer): Site[] {
-    const vid = this.verticalId(key);
+  // ── sites ──
+  async listSites(key: VerticalKey, viewer: Viewer): Promise<Site[]> {
+    const vid = this.verticalIdOf(key);
     const rows = [...this.sites.values()].filter((s) => s.verticalId === vid);
     return scopeSitesToViewer(rows, viewer).sort((a, b) => a.domain.localeCompare(b.domain));
   }
-  getSite(id: string) {
+  async getSite(id: string) {
     return this.sites.get(id);
   }
-  getSiteByConfigId(configId: string) {
+  async getSiteByConfigId(configId: string) {
     return [...this.sites.values()].find((s) => s.configId === configId);
   }
-  createSite(input: Omit<Site, "id" | "configId"> & { configId?: string }): Site {
+  async createSite(input: Omit<Site, "id" | "configId"> & { configId?: string }): Promise<Site> {
     const site: Site = {
       ...input,
       id: `st_${randomUUID().slice(0, 8)}`,
@@ -175,63 +187,53 @@ class InMemoryStore {
     this.sites.set(site.id, site);
     return site;
   }
-  updateSite(id: string, patch: Partial<Site>): Site | undefined {
+  async updateSite(id: string, patch: Partial<Site>): Promise<Site | undefined> {
     const cur = this.sites.get(id);
     if (!cur) return undefined;
     const next = { ...cur, ...patch, id };
     this.sites.set(id, next);
     return next;
   }
-  deleteSite(id: string): boolean {
-    // cascade instances + overrides
+  async deleteSite(id: string): Promise<boolean> {
     for (const wi of [...this.widgetInstances.values()].filter((w) => w.siteId === id)) this.widgetInstances.delete(wi.id);
     for (const ov of [...this.overrides.values()].filter((o) => o.siteId === id)) this.overrides.delete(ov.id);
     return this.sites.delete(id);
   }
-  siteCounts(siteId: string): SiteCounts {
+  async siteCounts(siteId: string): Promise<SiteCounts> {
     const links = [...this.widgetInstances.values()].filter((w) => w.siteId === siteId).length;
     const overrides = [...this.overrides.values()].filter((o) => o.siteId === siteId).length;
-    return { pages: 1, links, overrides }; // pages: v1 is site-level (single logical page)
+    return { pages: 1, links, overrides };
   }
 
-  // ── widget catalog & instances ──────────────────────────────────────
-  listWidgetTypes(key: VerticalKey): WidgetType[] {
-    const vid = this.verticalId(key);
+  // ── widget catalog & instances ──
+  async listWidgetTypes(key: VerticalKey): Promise<WidgetType[]> {
+    const vid = this.verticalIdOf(key);
     return [...this.widgetTypes.values()].filter((w) => w.verticalId === vid);
   }
-  getWidgetType(id: string) {
+  async getWidgetType(id: string) {
     return this.widgetTypes.get(id);
   }
-  getWidgetTypeByKey(key: string) {
-    return [...this.widgetTypes.values()].find((w) => w.key === key);
-  }
-  listWidgetInstances(siteId: string): WidgetInstance[] {
+  async listWidgetInstances(siteId: string): Promise<WidgetInstance[]> {
     return [...this.widgetInstances.values()].filter((w) => w.siteId === siteId);
   }
-  getWidgetInstance(id: string) {
-    return this.widgetInstances.get(id);
-  }
-  createWidgetInstance(siteId: string, widgetTypeId: string): WidgetInstance {
+  async createWidgetInstance(siteId: string, widgetTypeId: string): Promise<WidgetInstance> {
     const wi: WidgetInstance = { id: `wi_${randomUUID().slice(0, 8)}`, siteId, widgetTypeId };
     this.widgetInstances.set(wi.id, wi);
     return wi;
   }
-  deleteWidgetInstance(id: string): boolean {
+  async deleteWidgetInstance(id: string): Promise<boolean> {
     for (const ov of [...this.overrides.values()].filter((o) => o.widgetInstanceId === id)) this.overrides.delete(ov.id);
     return this.widgetInstances.delete(id);
   }
 
-  // ── overrides ───────────────────────────────────────────────────────
-  listOverrides(siteId: string): LinkOverride[] {
+  // ── overrides ──
+  async listOverrides(siteId: string): Promise<LinkOverride[]> {
     return [...this.overrides.values()].filter((o) => o.siteId === siteId);
   }
-  findOverride(siteId: string, widgetInstanceId: string, operatorId: string) {
-    return [...this.overrides.values()].find(
+  async upsertOverride(siteId: string, widgetInstanceId: string, operatorId: string, affiliateUrl: string): Promise<LinkOverride> {
+    const existing = [...this.overrides.values()].find(
       (o) => o.siteId === siteId && o.widgetInstanceId === widgetInstanceId && o.operatorId === operatorId,
     );
-  }
-  upsertOverride(siteId: string, widgetInstanceId: string, operatorId: string, affiliateUrl: string): LinkOverride {
-    const existing = this.findOverride(siteId, widgetInstanceId, operatorId);
     if (existing) {
       const next = { ...existing, affiliateUrl };
       this.overrides.set(existing.id, next);
@@ -241,148 +243,146 @@ class InMemoryStore {
     this.overrides.set(ov.id, ov);
     return ov;
   }
-  deleteOverride(siteId: string, widgetInstanceId: string, operatorId: string): boolean {
-    const existing = this.findOverride(siteId, widgetInstanceId, operatorId);
+  async deleteOverride(siteId: string, widgetInstanceId: string, operatorId: string): Promise<boolean> {
+    const existing = [...this.overrides.values()].find(
+      (o) => o.siteId === siteId && o.widgetInstanceId === widgetInstanceId && o.operatorId === operatorId,
+    );
     return existing ? this.overrides.delete(existing.id) : false;
   }
 
-  // ── published config (runtime source of truth) ──────────────────────
-  getLatestPublished(configId: string): PublishedConfig | undefined {
+  // ── published config ──
+  async getLatestPublished(configId: string): Promise<PublishedConfig | undefined> {
     const versions = this.published.get(configId);
     return versions && versions.length ? versions[versions.length - 1] : undefined;
   }
-  putPublished(pc: PublishedConfig) {
+  async putPublished(pc: PublishedConfig): Promise<void> {
     const arr = this.published.get(pc.configId) ?? [];
     arr.push(pc);
     this.published.set(pc.configId, arr);
   }
-  nextPublishVersion(configId: string): number {
-    return (this.getLatestPublished(configId)?.version ?? 0) + 1;
+  async nextPublishVersion(configId: string): Promise<number> {
+    const versions = this.published.get(configId);
+    return (versions && versions.length ? versions[versions.length - 1].version : 0) + 1;
   }
 
-  // ── events ──────────────────────────────────────────────────────────
-  appendEvent(e: Omit<AnalyticsEvent, "id">): AnalyticsEvent {
+  // ── events ──
+  async appendEvent(e: Omit<AnalyticsEvent, "id">): Promise<AnalyticsEvent> {
     const ev: AnalyticsEvent = { ...e, id: `ev_${randomUUID()}` };
     this.events.push(ev);
     return ev;
   }
-  listEvents(filter?: Partial<Pick<AnalyticsEvent, "configId" | "siteId" | "widgetInstanceId" | "operatorId" | "verticalId" | "type">>): AnalyticsEvent[] {
+  async listEvents(filter?: Partial<Pick<AnalyticsEvent, "configId" | "siteId" | "widgetInstanceId" | "operatorId" | "verticalId" | "type">>): Promise<AnalyticsEvent[]> {
     if (!filter) return this.events;
     return this.events.filter((e) =>
       Object.entries(filter).every(([k, v]) => v == null || (e as unknown as Record<string, unknown>)[k] === v),
     );
   }
 
-  // ── content (Layer A / B1) ──────────────────────────────────────────
-  listProducts(verticalKey?: VerticalKey): Product[] {
-    const vid = verticalKey ? this.verticalId(verticalKey) : undefined;
-    return [...this.products.values()]
-      .filter((p) => !vid || p.verticalId === vid)
-      .sort((a, b) => a.name.localeCompare(b.name));
+  // ── content (Layer A / B1) ──
+  async listProducts(verticalKey?: VerticalKey): Promise<Product[]> {
+    const vid = verticalKey ? this.verticalIdOf(verticalKey) : undefined;
+    return [...this.products.values()].filter((p) => !vid || p.verticalId === vid).sort((a, b) => a.name.localeCompare(b.name));
   }
-  getProduct(id: string) {
+  async getProduct(id: string) {
     return this.products.get(id);
   }
-  getProductBySlug(slug: string) {
+  async getProductBySlug(slug: string) {
     return [...this.products.values()].find((p) => p.slug === slug);
   }
-  updateProduct(id: string, patch: Partial<Product>): Product | undefined {
+  async updateProduct(id: string, patch: Partial<Product>): Promise<Product | undefined> {
     const cur = this.products.get(id);
     if (!cur) return undefined;
     const next = { ...cur, ...patch, id };
     this.products.set(id, next);
     return next;
   }
-
-  listModules(productId: string): Module[] {
+  async listModules(productId: string): Promise<Module[]> {
     return [...this.modules.values()].filter((x) => x.productId === productId);
   }
-  getModule(id: string) {
+  async getModule(id: string) {
     return this.modules.get(id);
   }
-  createModule(input: Omit<Module, "id">): Module {
+  async createModule(input: Omit<Module, "id">): Promise<Module> {
     const mo: Module = { ...input, id: `mod_${randomUUID().slice(0, 8)}` };
     this.modules.set(mo.id, mo);
     return mo;
   }
-  updateModule(id: string, patch: Partial<Module>): Module | undefined {
+  async updateModule(id: string, patch: Partial<Module>): Promise<Module | undefined> {
     const cur = this.modules.get(id);
     if (!cur) return undefined;
     const next = { ...cur, ...patch, id };
     this.modules.set(id, next);
     return next;
   }
-  deleteModule(id: string): boolean {
+  async deleteModule(id: string): Promise<boolean> {
     return this.modules.delete(id);
   }
-
-  listStrategies(productId: string): Strategy[] {
+  async listStrategies(productId: string): Promise<Strategy[]> {
     return [...this.strategies.values()].filter((x) => x.productId === productId);
   }
-  listTiers(productId: string): Tier[] {
+  async listTiers(productId: string): Promise<Tier[]> {
     return [...this.tiers.values()].filter((x) => x.productId === productId);
   }
-
-  listChangelog(productId: string): Changelog[] {
-    return [...this.changelog.values()]
-      .filter((x) => x.productId === productId)
-      .sort((a, b) => b.date.localeCompare(a.date));
+  async listChangelog(productId: string): Promise<Changelog[]> {
+    return [...this.changelog.values()].filter((x) => x.productId === productId).sort((a, b) => b.date.localeCompare(a.date));
   }
-  createChangelog(input: Omit<Changelog, "id">): Changelog {
+  async createChangelog(input: Omit<Changelog, "id">): Promise<Changelog> {
     const cl: Changelog = { ...input, id: `cl_${randomUUID().slice(0, 8)}` };
     this.changelog.set(cl.id, cl);
     return cl;
   }
-
-  listStatusFeed(productId: string): StatusFeed[] {
+  async listStatusFeed(productId: string): Promise<StatusFeed[]> {
     return [...this.statusFeed.values()].filter((x) => x.productId === productId);
   }
-
-  listPages(): Page[] {
+  async listPages(): Promise<Page[]> {
     return [...this.pages.values()].sort((a, b) => a.title.localeCompare(b.title));
   }
-  getPage(id: string) {
+  async getPage(id: string) {
     return this.pages.get(id);
   }
-  getPageBySlug(slug: string) {
+  async getPageBySlug(slug: string) {
     return [...this.pages.values()].find((p) => p.slug === slug);
   }
-  createPage(input: Omit<Page, "id">): Page {
+  async createPage(input: Omit<Page, "id">): Promise<Page> {
     const pg: Page = { ...input, id: `pg_${randomUUID().slice(0, 8)}` };
     this.pages.set(pg.id, pg);
     return pg;
   }
-  updatePage(id: string, patch: Partial<Page>): Page | undefined {
+  async updatePage(id: string, patch: Partial<Page>): Promise<Page | undefined> {
     const cur = this.pages.get(id);
     if (!cur) return undefined;
     const next = { ...cur, ...patch, id };
     this.pages.set(id, next);
     return next;
   }
-  deletePage(id: string): boolean {
+  async deletePage(id: string): Promise<boolean> {
     return this.pages.delete(id);
   }
-
-  listAudit(): AuditEntry[] {
-    return [...this.audit].sort((a, b) => b.ts.localeCompare(a.ts));
+  async listAudit(): Promise<AuditEntry[]> {
+    return [...this.auditLog].sort((a, b) => b.ts.localeCompare(a.ts));
   }
-  appendAudit(entry: Omit<AuditEntry, "id">): AuditEntry {
+  async appendAudit(entry: Omit<AuditEntry, "id">): Promise<AuditEntry> {
     const a: AuditEntry = { ...entry, id: `au_${randomUUID().slice(0, 8)}` };
-    this.audit.push(a);
+    this.auditLog.push(a);
     return a;
   }
 }
 
-export type DataStore = InstanceType<typeof InMemoryStore>;
+const g = globalThis as unknown as { __aithreusStore?: DataStore };
 
-// Singleton, cached on globalThis to survive HMR and persist process state.
-const g = globalThis as unknown as { __aithreusStore?: InMemoryStore };
 export function getStore(): DataStore {
-  if (!g.__aithreusStore) g.__aithreusStore = new InMemoryStore();
+  if (!g.__aithreusStore) {
+    g.__aithreusStore = createStore();
+  }
   return g.__aithreusStore;
 }
 
+function createStore(): DataStore {
+  // DATABASE_URL → Postgres via Drizzle; otherwise the in-memory store (zero-setup demo).
+  return process.env.DATABASE_URL ? createDrizzleStore() : new InMemoryStore();
+}
+
 /** Dev/test only: re-seed the store to a clean state. */
-export function resetStore(): void {
-  g.__aithreusStore = new InMemoryStore();
+export async function resetStore(): Promise<void> {
+  await getStore().reset();
 }

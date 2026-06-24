@@ -17,13 +17,13 @@ export async function createSiteAction(input: { domain: string; status: "live" |
   if (viewer.role === "public") return { ok: false, error: "Not permitted" };
   const vertical = await getActiveVertical();
   const store = getStore();
-  const v = store.getVerticalByKey(vertical);
+  const v = await store.getVerticalByKey(vertical);
   if (!v) return { ok: false, error: "Unknown vertical" };
 
   const domain = normalizeDomain(input.domain);
   if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) return { ok: false, error: "Enter a valid domain (e.g. example.com)" };
 
-  store.createSite({ clientId: viewer.clientId, verticalId: v.id, domain, status: input.status, lastPublishedAt: null });
+  await store.createSite({ clientId: viewer.clientId, verticalId: v.id, domain, status: input.status, lastPublishedAt: null });
   revalidatePath("/admin/sites");
   revalidatePath("/admin");
   return { ok: true };
@@ -36,13 +36,13 @@ export async function updateSiteAction(
   const viewer = await getViewer();
   if (viewer.role === "public") return { ok: false, error: "Not permitted" };
   const store = getStore();
-  const site = store.getSite(id);
+  const site = await store.getSite(id);
   if (!site) return { ok: false, error: "Site not found" };
   if (!canAccessClient(viewer, site.clientId)) return { ok: false, error: "Not permitted" };
 
   const domain = normalizeDomain(input.domain);
   if (!domain) return { ok: false, error: "Domain is required" };
-  store.updateSite(id, { domain, status: input.status });
+  await store.updateSite(id, { domain, status: input.status });
   revalidatePath("/admin/sites");
   revalidatePath("/admin");
   return { ok: true };
@@ -52,10 +52,10 @@ export async function deleteSiteAction(id: string): Promise<ActionResult> {
   const viewer = await getViewer();
   if (viewer.role === "public") return { ok: false, error: "Not permitted" };
   const store = getStore();
-  const site = store.getSite(id);
+  const site = await store.getSite(id);
   if (!site) return { ok: false, error: "Site not found" };
   if (!canAccessClient(viewer, site.clientId)) return { ok: false, error: "Not permitted" };
-  store.deleteSite(id);
+  await store.deleteSite(id);
   revalidatePath("/admin/sites");
   revalidatePath("/admin");
   return { ok: true };

@@ -14,7 +14,7 @@ export async function OPTIONS() {
 // GET /api/embed/config/:configId → latest published, resolved, active-only config (no raw URLs).
 export async function GET(_req: Request, { params }: { params: Promise<{ configId: string }> }) {
   const { configId } = await params;
-  const pub = getStore().getLatestPublished(configId);
+  const pub = await getStore().getLatestPublished(configId);
   if (!pub) {
     return NextResponse.json({ error: "not found or not published" }, { status: 404, headers: CORS });
   }

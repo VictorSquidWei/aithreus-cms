@@ -7,7 +7,7 @@ import { RichContentBlock } from "@/components/presentation/rich-content-block";
 
 export default async function DocPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const page = getStore().getPageBySlug(slug);
+  const page = await getStore().getPageBySlug(slug);
   if (!page) notFound();
 
   return (
