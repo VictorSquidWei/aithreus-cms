@@ -7,6 +7,7 @@ One unified Aithreus web property: a **gated B2B product-marketing site** (Layer
 ## ▶ Want to see it?
 
 - **Run:** `npm install && npm run dev`, open **http://localhost:3000**, log in with `client@dimers.com` / `client123`.
+- **[HANDOFF.md](HANDOFF.md)** — comprehensive functionality (per vertical) + production/AWS handoff (the master reference).
 - **[GUIDE.md](GUIDE.md)** — what it is, how to navigate, how the demo works (start here).
 - **[DEMO.md](DEMO.md)** — a 10-minute click-by-click walkthrough script.
 - **[docs/engineering/](docs/engineering/README.md)** — endpoints, database, integration seams, deployment (for the engineering team).
