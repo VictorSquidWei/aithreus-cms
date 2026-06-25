@@ -14,8 +14,11 @@ export async function OPTIONS() {
 // GET /api/embed/config/:configId → latest published, resolved, active-only config (no raw URLs).
 export async function GET(_req: Request, { params }: { params: Promise<{ configId: string }> }) {
   const { configId } = await params;
-  const pub = await getStore().getLatestPublished(configId);
-  if (!pub) {
+  const store = getStore();
+  const [pub, site] = await Promise.all([store.getLatestPublished(configId), store.getSiteByConfigId(configId)]);
+  // §4.9: only LIVE, published sites are served to the runtime — draft sites are excluded
+  // from live widget config even if a publish snapshot exists.
+  if (!pub || !site || site.status !== "live") {
     return NextResponse.json({ error: "not found or not published" }, { status: 404, headers: CORS });
   }
   return NextResponse.json(pub.payload, {

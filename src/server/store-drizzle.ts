@@ -8,8 +8,10 @@ import * as s from "@/db/schema";
 import type { DataStore, EventFilter, SiteCounts } from "@/server/data-store";
 import { buildSeed } from "@/server/seed-data";
 import { buildPublishedSnapshot, ctaOperators } from "@/server/resolution";
+import { scopeSitesToViewer, visibleOperators } from "@/server/visibility";
 import type {
   AnalyticsEvent,
+  AuditEntry,
   Changelog,
   LinkOverride,
   Module,
@@ -20,6 +22,7 @@ import type {
   ResolvedConfig,
   Site,
   VerticalKey,
+  Viewer,
   WidgetInstance,
 } from "@/lib/types";
 
@@ -137,10 +140,9 @@ export class DrizzleStore implements DataStore {
   }
 
   // ── operators ──
-  async listOperators(key: VerticalKey, viewer: import("@/lib/types").Viewer): Promise<Operator[]> {
+  async listOperators(key: VerticalKey, viewer: Viewer): Promise<Operator[]> {
     const ops = await this.rawOperators(key);
     const sorted = ops.sort((a, b) => a.name.localeCompare(b.name));
-    const { visibleOperators } = await import("@/server/visibility");
     return visibleOperators(sorted, viewer);
   }
   async rawOperators(key: VerticalKey): Promise<Operator[]> {
@@ -172,11 +174,10 @@ export class DrizzleStore implements DataStore {
   }
 
   // ── sites ──
-  async listSites(key: VerticalKey, viewer: import("@/lib/types").Viewer): Promise<Site[]> {
+  async listSites(key: VerticalKey, viewer: Viewer): Promise<Site[]> {
     const vid = await this.verticalIdOf(key);
     if (!vid) return [];
     const rows = await this.db.select().from(s.sites).where(eq(s.sites.verticalId, vid));
-    const { scopeSitesToViewer } = await import("@/server/visibility");
     return scopeSitesToViewer(rows, viewer).sort((a, b) => a.domain.localeCompare(b.domain));
   }
   async getSite(id: string) {
@@ -380,7 +381,7 @@ export class DrizzleStore implements DataStore {
     const rows = await this.db.select().from(s.auditLog);
     return rows.sort((a, b) => b.ts.localeCompare(a.ts));
   }
-  async appendAudit(entry: Omit<import("@/lib/types").AuditEntry, "id">) {
+  async appendAudit(entry: Omit<AuditEntry, "id">) {
     const a = { ...entry, id: `au_${randomUUID().slice(0, 8)}` };
     await this.db.insert(s.auditLog).values(a);
     return a;

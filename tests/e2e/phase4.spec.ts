@@ -62,6 +62,20 @@ test("§9.14 end-to-end loop: CMS change + Publish → demo updates, embed uncha
   await expect(page.getByText("Bet on FanDuel")).toHaveCount(0);
 });
 
+test("draft sites are excluded from live config even after publish (§4.9)", async ({ page, request }) => {
+  await loginClient(page);
+  // Force the VNX vertical (Dimers' VNX site is in DRAFT status) and publish it.
+  await page.context().addCookies([{ name: "aithreus_vertical", value: "VNX", url: "http://localhost:3100" }]);
+  await page.goto("/admin/sites");
+  await page.getByTestId("publish-open").click();
+  await page.getByTestId("publish-confirm").click();
+  await expect(page.getByText("Published", { exact: false })).toBeVisible();
+
+  // Even though a publish snapshot now exists, the draft site must NOT serve live config.
+  const res = await request.get("/api/embed/config/site_dimers_vnx");
+  expect(res.status()).toBe(404);
+});
+
 test("Phase 4 screenshot", async ({ page }) => {
   await page.goto("/demo/client-site");
   await expect(page.getByTestId("aithreus-rendered-widget").first()).toBeVisible();
