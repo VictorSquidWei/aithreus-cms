@@ -5,7 +5,7 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
   workers: 1,
-  retries: 1, // dev server is single-worker; retry absorbs first-compile/contention slowness
+  retries: 2, // dev server is single-worker on Windows; retries absorb occasional ECONNRESET / first-compile contention
   timeout: 90_000,
   expect: { timeout: 15_000 },
   reporter: [["list"]],

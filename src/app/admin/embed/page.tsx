@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { getViewer } from "@/server/session";
 import { getActiveVertical } from "@/server/vertical";
 import { getStore } from "@/server/store";
@@ -11,7 +12,15 @@ export default async function EmbedPage({ searchParams }: { searchParams: Promis
   const sites = await store.listSites(vertical, viewer);
   const sp = await searchParams;
   const selected = sp.site && sites.some((s) => s.id === sp.site) ? sp.site! : (sites[0]?.id ?? null);
-  const cdn = process.env.NEXT_PUBLIC_WIDGET_CDN_URL ?? "http://localhost:3000/widget/v1/embed.js";
+  // Production points NEXT_PUBLIC_WIDGET_CDN_URL at the CDN. In dev (and the demo), fall back to the
+  // request's own origin so the copyable snippet always references the host the app is actually running on
+  // (e.g. :3100), not a hardcoded port.
+  let cdn = process.env.NEXT_PUBLIC_WIDGET_CDN_URL;
+  if (!cdn) {
+    const host = (await headers()).get("host") ?? "localhost:3000";
+    const proto = host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https";
+    cdn = `${proto}://${host}/widget/v1/embed.js`;
+  }
 
   let widgets: { instanceId: string; typeName: string; snippet: string }[] = [];
   if (selected) {

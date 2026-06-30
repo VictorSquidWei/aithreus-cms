@@ -196,6 +196,7 @@ function generateEvents(sites: Site[], instances: WidgetInstance[], operators: O
   const rng = mulberry32(1337);
   const DAY = 86_400_000;
   const now = Date.now();
+  const startOfToday = Math.floor(now / DAY) * DAY; // midnight UTC — anchor buckets to calendar days
   const out: AnalyticsEvent[] = [];
 
   const ev = (
@@ -226,15 +227,18 @@ function generateEvents(sites: Site[], instances: WidgetInstance[], operators: O
     for (const wi of wis) {
       for (const op of ops) {
         for (let day = 13; day >= 0; day--) {
-          const base = now - day * DAY;
+          // Keep every event inside its own calendar day [dayStart, dayStart+DAY) so the chart spans
+          // exactly the last 14 days with no partial bucket spilling into "tomorrow".
+          const dayStart = startOfToday - day * DAY;
+          const dayEnd = dayStart + DAY - 1;
           const impressions = 12 + Math.floor(rng() * 18);
-          for (let i = 0; i < impressions; i++) out.push(ev("impression", site, wi, op, base + Math.floor(rng() * DAY)));
+          for (let i = 0; i < impressions; i++) out.push(ev("impression", site, wi, op, dayStart + Math.floor(rng() * DAY)));
           const clicks = Math.round(impressions * (0.06 + rng() * 0.06));
           for (let i = 0; i < clicks; i++) {
-            const ts = base + Math.floor(rng() * DAY);
+            const ts = dayStart + Math.floor(rng() * DAY);
             out.push(ev("click", site, wi, op, ts));
             // ~12% of clicks convert — per-click so totals don't round to zero
-            if (rng() < 0.12) out.push(ev("conversion", site, wi, op, ts + 60_000, { value: op.estPayout ?? 50 }));
+            if (rng() < 0.12) out.push(ev("conversion", site, wi, op, Math.min(ts + 60_000, dayEnd), { value: op.estPayout ?? 50 }));
           }
         }
       }
