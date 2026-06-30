@@ -39,6 +39,7 @@
 | [10-link-cms/06-widget-gallery.md](10-link-cms/06-widget-gallery.md) | Widget Gallery (preview + grab embed) | **implemented** | Report §5.5; CMS-2 §5 |
 | [10-link-cms/07-performance.md](10-link-cms/07-performance.md) | Performance dashboard (views/clicks/CTR/conv/rev) | **implemented** | Report §5.6; CMS-2 §5 |
 | [10-link-cms/08-publish-workflow.md](10-link-cms/08-publish-workflow.md) | Auto-save + "Publish to live widgets" + cache bust | **implemented** | Report §5.7; CMS-2 §7 |
+| [10-link-cms/09-affiliate-links.md](10-link-cms/09-affiliate-links.md) | **Per-client affiliate links** (Step 1 revised) — each client sets its own URL per platform | **implemented** | CMS-2 §4 (Step 1); Report §4.3, §4.6, §9.2 |
 
 ## Phase 4 — Runtime trio + demo (`/specs/20-runtime/`) — *the headline proof*
 

@@ -64,6 +64,18 @@ Operator {
 - `active==false` → **no widget renders a CTA for this operator anywhere** (global kill switch, CMS-2 §3).
 - `internalOnly==true` → filtered from all non-internal reads (§5).
 
+### 3.3a AffiliateLink — per-client affiliate link (revised Step 1; see `10-link-cms/09-affiliate-links`)
+```
+AffiliateLink                     // one per (client, operator)
+  id
+  clientId   -> Client
+  operatorId -> Operator           // a catalog operator in the client's vertical
+  affiliateUrl                      // the client's link, with their tracking ID
+  active     (bool)                 // the client's per-operator on/off (kill switch)
+  // unique: at most one row per (clientId, operatorId)
+```
+> The `Operator` (§3.3) is the **shared catalog** (branding + integration facets + a house/seed `affiliateUrl` default + a catalog `active` availability flag). Each **client** sets their own affiliate URL + on/off here. This is the multi-tenant-correct refinement of the original global model (CMS-2 §4 Step 1; §9.2 client isolation). **Resolution default becomes the client's `AffiliateLink.affiliateUrl`** (then site/widget `LinkOverride` still wins) — full chain in `10-link-cms/09-affiliate-links §3`.
+
 ### 3.4 Site & embed (Report §4.4)
 ```
 Site {
