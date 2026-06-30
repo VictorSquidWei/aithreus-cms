@@ -1,7 +1,7 @@
 import { getViewer } from "@/server/session";
 import { getActiveVertical } from "@/server/vertical";
 import { getStore } from "@/server/store";
-import { ctaOperators, resolveWidgetsForSiteAdmin } from "@/server/resolution";
+import { eligibleOperators, resolveWidgetsForSiteAdmin } from "@/server/resolution";
 import { PageContainer, PageHeader } from "@/components/page-container";
 import { EditLinks, type WidgetBlock } from "@/components/link-cms/edit-links";
 
@@ -16,17 +16,18 @@ export default async function LinksPage({ searchParams }: { searchParams: Promis
   let widgets: WidgetBlock[] = [];
   if (selected) {
     const site = (await store.getSite(selected))!;
-    const [instances, rawOps, overrides, types] = await Promise.all([
+    const [instances, rawOps, overrides, types, clientLinks] = await Promise.all([
       store.listWidgetInstances(site.id),
       store.rawOperators(vertical),
       store.listOverrides(site.id),
       store.listWidgetTypes(vertical),
+      store.listAffiliateLinks(site.clientId),
     ]);
     const typeById = new Map(types.map((t) => [t.id, t]));
     widgets = resolveWidgetsForSiteAdmin({
       instances,
       widgetTypeById: (id) => typeById.get(id),
-      activeOps: ctaOperators(rawOps),
+      eligible: eligibleOperators(rawOps, clientLinks),
       overrides,
     }).map((w) => ({
       instanceId: w.instance.id,

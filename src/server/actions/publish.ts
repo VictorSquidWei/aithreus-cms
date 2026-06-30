@@ -5,7 +5,7 @@ import { getSession, getViewer } from "@/server/session";
 import { getActiveVertical } from "@/server/vertical";
 import { getStore } from "@/server/store";
 import type { DataStore } from "@/server/store";
-import { buildPublishedSnapshot, ctaOperators, type PublishedSnapshot } from "@/server/resolution";
+import { buildPublishedSnapshot, eligibleOperators, type PublishedSnapshot } from "@/server/resolution";
 import type { Site, VerticalKey } from "@/lib/types";
 
 export interface PublishDiff {
@@ -25,11 +25,12 @@ async function context(): Promise<{ store: DataStore; sites: Site[] } | null> {
 async function snapshotForSite(store: DataStore, site: Site): Promise<{ verticalKey: VerticalKey; snap: PublishedSnapshot }> {
   const vertical = await store.getVerticalById(site.verticalId);
   const verticalKey = (vertical?.key ?? "TT") as VerticalKey;
-  const [instances, rawOps, overrides, types] = await Promise.all([
+  const [instances, rawOps, overrides, types, clientLinks] = await Promise.all([
     store.listWidgetInstances(site.id),
     store.rawOperators(verticalKey),
     store.listOverrides(site.id),
     store.listWidgetTypes(verticalKey),
+    store.listAffiliateLinks(site.clientId),
   ]);
   const typeById = new Map(types.map((t) => [t.id, t]));
   const snap = buildPublishedSnapshot({
@@ -37,7 +38,7 @@ async function snapshotForSite(store: DataStore, site: Site): Promise<{ vertical
     verticalKey,
     instances,
     widgetTypeById: (id) => typeById.get(id),
-    activeOps: ctaOperators(rawOps),
+    eligible: eligibleOperators(rawOps, clientLinks),
     overrides,
   });
   return { verticalKey, snap };

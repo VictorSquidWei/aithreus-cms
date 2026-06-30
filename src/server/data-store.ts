@@ -1,6 +1,7 @@
 // The async repository interface every screen/server-action depends on.
 // Implemented by InMemoryStore (store.ts) and DrizzleStore (store-drizzle.ts).
 import type {
+  AffiliateLink,
   AnalyticsEvent,
   AuditEntry,
   Changelog,
@@ -75,6 +76,15 @@ export interface DataStore {
   listOverrides(siteId: string): Promise<LinkOverride[]>;
   upsertOverride(siteId: string, widgetInstanceId: string, operatorId: string, affiliateUrl: string): Promise<LinkOverride>;
   deleteOverride(siteId: string, widgetInstanceId: string, operatorId: string): Promise<boolean>;
+
+  // affiliate links (per-client)
+  listAffiliateLinks(clientId: string): Promise<AffiliateLink[]>;
+  getAffiliateLink(clientId: string, operatorId: string): Promise<AffiliateLink | undefined>;
+  /** Set the client's tracking URL for an operator (creates the link, active=true on first save). */
+  upsertAffiliateLink(clientId: string, operatorId: string, affiliateUrl: string): Promise<AffiliateLink>;
+  /** Flip the active flag on an EXISTING link only. Returns undefined if the client never configured it
+   *  (the toggle must never mint a link pointing at the catalog house URL — see data-model §3.3a). */
+  setAffiliateLinkActive(clientId: string, operatorId: string, active: boolean): Promise<AffiliateLink | undefined>;
 
   // published config
   getLatestPublished(configId: string): Promise<PublishedConfig | undefined>;

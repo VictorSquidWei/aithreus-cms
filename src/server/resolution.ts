@@ -1,7 +1,8 @@
-// The canonical link-resolution algorithm — specs/10-link-cms/04-edit-links.md §2 (Report §4.6).
-// PURE functions over plain data (no store dependency) so they work identically for the
-// in-memory and Drizzle backends, and can run synchronously at seed time.
+// The canonical link-resolution algorithm — specs/10-link-cms/09-affiliate-links.md §3
+// (revises Report §4.6 to a per-client model). PURE functions over plain data so they work
+// identically for the in-memory and Drizzle backends and run synchronously at seed time.
 import type {
+  AffiliateLink,
   LinkOverride,
   Operator,
   ResolvedConfig,
@@ -12,25 +13,41 @@ import type {
   WidgetInstance,
   WidgetType,
 } from "@/lib/types";
-import { publicOperators } from "@/server/visibility";
 
 export type LinkState = "INHERITED" | "CUSTOM";
+
+/** A catalog operator a specific client can render CTAs for, carrying the client's link URL. */
+export interface EligibleOperator {
+  operator: Operator;
+  clientUrl: string;
+}
 
 export interface ResolvedSlot {
   operator: Operator;
   state: LinkState;
   resolvedUrl: string;
-  active: boolean;
 }
 
-/** Active, non-internalOnly operators for a vertical, name-sorted — these get CTA slots. */
-export function ctaOperators(operators: Operator[]): Operator[] {
-  return publicOperators(operators).sort((a, b) => a.name.localeCompare(b.name));
+/**
+ * Operators eligible for a client's widgets: catalog operator must be active + non-internalOnly,
+ * AND the client must have an ACTIVE affiliate link for it. The link URL is the client's default.
+ * (Spec 09 §3 — the per-client kill switch is AffiliateLink.active.)
+ */
+export function eligibleOperators(operators: Operator[], affiliateLinks: AffiliateLink[]): EligibleOperator[] {
+  const linkByOp = new Map(affiliateLinks.map((l) => [l.operatorId, l]));
+  const out: EligibleOperator[] = [];
+  for (const op of operators) {
+    if (op.internalOnly || !op.active) continue;
+    const link = linkByOp.get(op.id);
+    if (!link || !link.active) continue;
+    out.push({ operator: op, clientUrl: link.affiliateUrl });
+  }
+  return out.sort((a, b) => a.operator.name.localeCompare(b.operator.name));
 }
 
-/** single → first active operator; multi → all active (data-driven, CMS-2 §3). */
-export function slotOperatorsForWidget(activeOps: Operator[], type: WidgetType): Operator[] {
-  return type.ctaMode === "multi" ? activeOps : activeOps.slice(0, 1);
+/** single → first eligible operator; multi → one slot per eligible operator (data-driven). */
+export function slotsForWidget(eligible: EligibleOperator[], type: WidgetType): EligibleOperator[] {
+  return type.ctaMode === "multi" ? eligible : eligible.slice(0, 1);
 }
 
 function overrideMap(overrides: LinkOverride[]): Map<string, string> {
@@ -50,7 +67,7 @@ export interface ResolveArgs {
   verticalKey: VerticalKey;
   instances: WidgetInstance[];
   widgetTypeById: (id: string) => WidgetType | undefined;
-  activeOps: Operator[]; // already passed through ctaOperators()
+  eligible: EligibleOperator[]; // from eligibleOperators(catalog, client's links)
   overrides: LinkOverride[];
 }
 
@@ -61,9 +78,9 @@ export function resolveWidgetsForSiteAdmin(args: Omit<ResolveArgs, "site" | "ver
   for (const instance of args.instances) {
     const type = args.widgetTypeById(instance.widgetTypeId);
     if (!type) continue;
-    const rows = slotOperatorsForWidget(args.activeOps, type).map((op): ResolvedSlot => {
-      const custom = om.get(`${instance.id}:${op.id}`);
-      return { operator: op, state: custom ? "CUSTOM" : "INHERITED", resolvedUrl: custom ?? op.affiliateUrl, active: op.active };
+    const rows = slotsForWidget(args.eligible, type).map(({ operator, clientUrl }): ResolvedSlot => {
+      const custom = om.get(`${instance.id}:${operator.id}`);
+      return { operator, state: custom ? "CUSTOM" : "INHERITED", resolvedUrl: custom ?? clientUrl };
     });
     out.push({ instance, type, rows });
   }
@@ -84,10 +101,10 @@ export function buildPublishedSnapshot(args: ResolveArgs): PublishedSnapshot {
   for (const instance of args.instances) {
     const type = args.widgetTypeById(instance.widgetTypeId);
     if (!type) continue;
-    const ctas: ResolvedCta[] = slotOperatorsForWidget(args.activeOps, type).map((op) => {
-      const url = om.get(`${instance.id}:${op.id}`) ?? op.affiliateUrl;
-      targets[`${instance.id}:${op.id}`] = url;
-      return { operatorId: op.id, label: op.buttonLabel, color: op.brandColor, href: `/r/${args.site.configId}/${instance.id}/${op.id}` };
+    const ctas: ResolvedCta[] = slotsForWidget(args.eligible, type).map(({ operator, clientUrl }) => {
+      const url = om.get(`${instance.id}:${operator.id}`) ?? clientUrl;
+      targets[`${instance.id}:${operator.id}`] = url;
+      return { operatorId: operator.id, label: operator.buttonLabel, color: operator.brandColor, href: `/r/${args.site.configId}/${instance.id}/${operator.id}` };
     });
     widgets[instance.id] = {
       widgetInstanceId: instance.id,
@@ -102,11 +119,11 @@ export function buildPublishedSnapshot(args: ResolveArgs): PublishedSnapshot {
   const payload: ResolvedConfig = {
     configId: args.site.configId,
     vertical: args.verticalKey,
-    operators: args.activeOps.map((o) => ({
-      id: o.id,
-      name: o.name,
-      buttonLabel: o.buttonLabel,
-      brandColor: o.brandColor,
+    operators: args.eligible.map(({ operator }) => ({
+      id: operator.id,
+      name: operator.name,
+      buttonLabel: operator.buttonLabel,
+      brandColor: operator.brandColor,
       active: true as const,
     })),
     widgets,

@@ -114,6 +114,17 @@ export interface LinkOverride {
   // scheduledStart/End reserved (Phase 2)
 }
 
+// Per-client affiliate link for a catalog operator (the client's own tracking URL + on/off).
+// See specs/10-link-cms/09-affiliate-links.md. Resolution default = this URL (override still wins).
+export interface AffiliateLink {
+  id: string;
+  clientId: string;
+  operatorId: string;
+  affiliateUrl: string;
+  active: boolean;
+  // unique per (clientId, operatorId)
+}
+
 // ── Published config (Publish output; runtime source of truth) ────────
 export interface ResolvedCta {
   operatorId: string;

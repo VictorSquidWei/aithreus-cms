@@ -3,6 +3,7 @@
 // the SAME async shape against Postgres and is selected when DATABASE_URL is set.
 import { randomUUID } from "node:crypto";
 import type {
+  AffiliateLink,
   AnalyticsEvent,
   AuditEntry,
   Changelog,
@@ -26,7 +27,7 @@ import type {
 } from "@/lib/types";
 import { scopeSitesToViewer, visibleOperators } from "@/server/visibility";
 import { buildSeed } from "@/server/seed-data";
-import { buildPublishedSnapshot, ctaOperators } from "@/server/resolution";
+import { buildPublishedSnapshot, eligibleOperators } from "@/server/resolution";
 import type { DataStore, SiteCounts } from "@/server/data-store";
 import { createDrizzleStore } from "@/server/store-drizzle";
 
@@ -41,6 +42,7 @@ class InMemoryStore implements DataStore {
   private widgetTypes = new Map<string, WidgetType>();
   private widgetInstances = new Map<string, WidgetInstance>();
   private overrides = new Map<string, LinkOverride>();
+  private affiliateLinks = new Map<string, AffiliateLink>();
   private published = new Map<string, PublishedConfig[]>();
   private events: AnalyticsEvent[] = [];
   private products = new Map<string, Product>();
@@ -74,6 +76,7 @@ class InMemoryStore implements DataStore {
     fill(this.widgetTypes, seed.widgetTypes);
     fill(this.widgetInstances, seed.widgetInstances);
     fill(this.overrides, seed.overrides);
+    fill(this.affiliateLinks, seed.affiliateLinks);
     fill(this.products, seed.products);
     fill(this.modules, seed.modules);
     fill(this.strategies, seed.strategies);
@@ -94,7 +97,10 @@ class InMemoryStore implements DataStore {
         verticalKey,
         instances: [...this.widgetInstances.values()].filter((w) => w.siteId === site.id),
         widgetTypeById: (id) => this.widgetTypes.get(id),
-        activeOps: ctaOperators([...this.operators.values()].filter((o) => o.verticalId === site.verticalId)),
+        eligible: eligibleOperators(
+          [...this.operators.values()].filter((o) => o.verticalId === site.verticalId),
+          [...this.affiliateLinks.values()].filter((l) => l.clientId === site.clientId),
+        ),
         overrides: [...this.overrides.values()].filter((o) => o.siteId === site.id),
       });
       const at = new Date().toISOString();
@@ -248,6 +254,38 @@ class InMemoryStore implements DataStore {
       (o) => o.siteId === siteId && o.widgetInstanceId === widgetInstanceId && o.operatorId === operatorId,
     );
     return existing ? this.overrides.delete(existing.id) : false;
+  }
+
+  // ── affiliate links (per-client) ──
+  async listAffiliateLinks(clientId: string): Promise<AffiliateLink[]> {
+    return [...this.affiliateLinks.values()].filter((l) => l.clientId === clientId);
+  }
+  async getAffiliateLink(clientId: string, operatorId: string): Promise<AffiliateLink | undefined> {
+    return [...this.affiliateLinks.values()].find((l) => l.clientId === clientId && l.operatorId === operatorId);
+  }
+  async upsertAffiliateLink(clientId: string, operatorId: string, affiliateUrl: string): Promise<AffiliateLink> {
+    const existing = [...this.affiliateLinks.values()].find((l) => l.clientId === clientId && l.operatorId === operatorId);
+    if (existing) {
+      const next = { ...existing, affiliateUrl, active: true };
+      this.affiliateLinks.set(existing.id, next);
+      return next;
+    }
+    const link: AffiliateLink = {
+      id: `al_${randomUUID().slice(0, 8)}`,
+      clientId,
+      operatorId,
+      affiliateUrl,
+      active: true,
+    };
+    this.affiliateLinks.set(link.id, link);
+    return link;
+  }
+  async setAffiliateLinkActive(clientId: string, operatorId: string, active: boolean): Promise<AffiliateLink | undefined> {
+    const existing = [...this.affiliateLinks.values()].find((l) => l.clientId === clientId && l.operatorId === operatorId);
+    if (!existing) return undefined;
+    const next = { ...existing, active };
+    this.affiliateLinks.set(existing.id, next);
+    return next;
   }
 
   // ── published config ──

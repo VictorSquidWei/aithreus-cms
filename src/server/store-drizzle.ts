@@ -7,9 +7,10 @@ import { Pool } from "pg";
 import * as s from "@/db/schema";
 import type { DataStore, EventFilter, SiteCounts } from "@/server/data-store";
 import { buildSeed } from "@/server/seed-data";
-import { buildPublishedSnapshot, ctaOperators } from "@/server/resolution";
+import { buildPublishedSnapshot, eligibleOperators } from "@/server/resolution";
 import { scopeSitesToViewer, visibleOperators } from "@/server/visibility";
 import type {
+  AffiliateLink,
   AnalyticsEvent,
   AuditEntry,
   Changelog,
@@ -42,6 +43,7 @@ export class DrizzleStore implements DataStore {
       db.delete(s.publishedConfigs),
       db.delete(s.events),
       db.delete(s.linkOverrides),
+      db.delete(s.affiliateLinks),
       db.delete(s.widgetInstances),
       db.delete(s.widgetTypes),
       db.delete(s.operators),
@@ -67,6 +69,7 @@ export class DrizzleStore implements DataStore {
     if (seed.widgetTypes.length) await db.insert(s.widgetTypes).values(seed.widgetTypes);
     if (seed.widgetInstances.length) await db.insert(s.widgetInstances).values(seed.widgetInstances);
     if (seed.overrides.length) await db.insert(s.linkOverrides).values(seed.overrides);
+    if (seed.affiliateLinks.length) await db.insert(s.affiliateLinks).values(seed.affiliateLinks);
     if (seed.products.length) await db.insert(s.products).values(seed.products);
     if (seed.modules.length) await db.insert(s.modules).values(seed.modules);
     if (seed.strategies.length) await db.insert(s.strategies).values(seed.strategies);
@@ -92,7 +95,10 @@ export class DrizzleStore implements DataStore {
         verticalKey,
         instances: seed.widgetInstances.filter((w) => w.siteId === site.id),
         widgetTypeById: (id) => typeById.get(id),
-        activeOps: ctaOperators(seed.operators.filter((o) => o.verticalId === site.verticalId)),
+        eligible: eligibleOperators(
+          seed.operators.filter((o) => o.verticalId === site.verticalId),
+          seed.affiliateLinks.filter((l) => l.clientId === site.clientId),
+        ),
         overrides: seed.overrides.filter((o) => o.siteId === site.id),
       });
       const at = new Date().toISOString();
@@ -259,6 +265,41 @@ export class DrizzleStore implements DataStore {
       .delete(s.linkOverrides)
       .where(and(eq(s.linkOverrides.siteId, siteId), eq(s.linkOverrides.widgetInstanceId, widgetInstanceId), eq(s.linkOverrides.operatorId, operatorId)));
     return true;
+  }
+
+  // ── affiliate links (per-client) ──
+  async listAffiliateLinks(clientId: string): Promise<AffiliateLink[]> {
+    return this.db.select().from(s.affiliateLinks).where(eq(s.affiliateLinks.clientId, clientId));
+  }
+  async getAffiliateLink(clientId: string, operatorId: string): Promise<AffiliateLink | undefined> {
+    return (
+      await this.db
+        .select()
+        .from(s.affiliateLinks)
+        .where(and(eq(s.affiliateLinks.clientId, clientId), eq(s.affiliateLinks.operatorId, operatorId)))
+    )[0];
+  }
+  async upsertAffiliateLink(clientId: string, operatorId: string, affiliateUrl: string): Promise<AffiliateLink> {
+    const existing = await this.getAffiliateLink(clientId, operatorId);
+    const link: AffiliateLink = existing
+      ? { ...existing, affiliateUrl, active: true }
+      : { id: `al_${randomUUID().slice(0, 8)}`, clientId, operatorId, affiliateUrl, active: true };
+    // Atomic upsert keyed on the (clientId, operatorId) unique constraint — two concurrent
+    // saves resolve to one row instead of racing the read-then-write into duplicates.
+    await this.db
+      .insert(s.affiliateLinks)
+      .values(link)
+      .onConflictDoUpdate({
+        target: [s.affiliateLinks.clientId, s.affiliateLinks.operatorId],
+        set: { affiliateUrl, active: true },
+      });
+    return link;
+  }
+  async setAffiliateLinkActive(clientId: string, operatorId: string, active: boolean): Promise<AffiliateLink | undefined> {
+    const existing = await this.getAffiliateLink(clientId, operatorId);
+    if (!existing) return undefined;
+    await this.db.update(s.affiliateLinks).set({ active }).where(eq(s.affiliateLinks.id, existing.id));
+    return { ...existing, active };
   }
 
   // ── published config ──

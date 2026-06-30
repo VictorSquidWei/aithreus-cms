@@ -69,6 +69,27 @@ async function main() {
   const events = await store.listEvents({ type: "click", siteId: "st_dimers_tt" });
   check(events.length > 0, `analytics events present — ${events.length} clicks for the demo site`);
 
+  // per-client affiliate links (spec 09)
+  const dkLink = await store.getAffiliateLink("cl_dimers", "op_dk");
+  check(!!dkLink && dkLink.affiliateUrl.includes("dimers-7741"), "Dimers has its own DraftKings affiliate link");
+  const catenaDk = await store.getAffiliateLink("cl_catena", "op_dk");
+  check(
+    !!catenaDk && catenaDk.affiliateUrl.includes("catena-3310") && catenaDk.affiliateUrl !== dkLink?.affiliateUrl,
+    "Catena's DraftKings link differs from Dimers' (per-client isolation)",
+  );
+  check(
+    (pub?.targets["wi_dimers_odds:op_fd"] ?? "").includes("dimers-7741"),
+    "published targets resolve to the client's affiliate link",
+  );
+  await store.upsertAffiliateLink("cl_dimers", "op_fd", "https://fanduel.example/aff?b=dimers-EDITED");
+  const edited = await store.getAffiliateLink("cl_dimers", "op_fd");
+  check(edited?.affiliateUrl === "https://fanduel.example/aff?b=dimers-EDITED", "upsertAffiliateLink round-trip");
+
+  // toggle Active never creates a link for an unconfigured operator (no house-URL leak — spec 09 / data-model §3.3a)
+  const ghost = await store.setAffiliateLinkActive("cl_catena", "op_caesars", true);
+  check(ghost === undefined, "setAffiliateLinkActive on an unconfigured operator is a no-op (creates nothing)");
+  check(!(await store.getAffiliateLink("cl_catena", "op_caesars")), "no phantom link minted by the toggle");
+
   if (failures) {
     console.error(`\n✗ ${failures} check(s) failed.`);
     process.exit(1);

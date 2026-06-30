@@ -2,7 +2,7 @@
 // Date/time columns are stored as ISO strings (text) to match the app's string types 1:1.
 // `.$type<>()` pins text/jsonb columns to the domain's string-literal unions so rows map
 // directly to the domain types with no casting.
-import { boolean, integer, jsonb, pgTable, real, text } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, real, text, unique } from "drizzle-orm/pg-core";
 import type { OperatorCategory, ResolvedConfig, Role, VerticalKey } from "@/lib/types";
 
 type ModuleCategory = "data" | "signal" | "calibration" | "execution" | "risk" | "health" | "alerting" | "ui";
@@ -76,6 +76,23 @@ export const widgetInstances = pgTable("widget_instances", {
   siteId: text("site_id").notNull(),
   widgetTypeId: text("widget_type_id").notNull(),
 });
+
+export const affiliateLinks = pgTable(
+  "affiliate_links",
+  {
+    id: text("id").primaryKey(),
+    clientId: text("client_id").notNull(),
+    operatorId: text("operator_id").notNull(),
+    affiliateUrl: text("affiliate_url").notNull(),
+    active: boolean("active").notNull(),
+  },
+  // The (clientId, operatorId) pair is the link's natural identity (data-model §3.3a):
+  // at most one row per client × operator. Enforced in the DB so concurrent upserts
+  // can't insert duplicates that would then race in resolution's last-writer-wins map.
+  (t) => ({
+    clientOperatorUnique: unique("affiliate_links_client_operator_unique").on(t.clientId, t.operatorId),
+  }),
+);
 
 export const linkOverrides = pgTable("link_overrides", {
   id: text("id").primaryKey(),

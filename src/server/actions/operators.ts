@@ -93,18 +93,6 @@ export async function updateOperatorAction(id: string, input: OperatorInput): Pr
   return { ok: true };
 }
 
-export async function setOperatorActiveAction(id: string, active: boolean): Promise<ActionResult> {
-  const viewer = await requireUser();
-  const store = getStore();
-  const op = await store.getOperator(id);
-  if (!op) return { ok: false, error: "Operator not found" };
-  if (op.internalOnly && !isInternal(viewer)) return { ok: false, error: "Not permitted" };
-  await store.updateOperator(id, { active });
-  revalidatePath("/admin/operators");
-  revalidatePath("/admin");
-  return { ok: true };
-}
-
 export async function deleteOperatorAction(id: string): Promise<ActionResult> {
   const viewer = await requireUser();
   const store = getStore();

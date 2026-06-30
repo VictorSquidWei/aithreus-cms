@@ -1,0 +1,1 @@
+ALTER TABLE "affiliate_links" ADD CONSTRAINT "affiliate_links_client_operator_unique" UNIQUE("client_id","operator_id");

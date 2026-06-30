@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
 import { buildContent } from "@/server/seed-content";
 import type {
+  AffiliateLink,
   AnalyticsEvent,
   AuditEntry,
   Changelog,
@@ -40,6 +41,7 @@ export interface Seed {
   widgetTypes: WidgetType[];
   widgetInstances: WidgetInstance[];
   overrides: LinkOverride[];
+  affiliateLinks: AffiliateLink[];
   events: AnalyticsEvent[];
   products: Product[];
   modules: Module[];
@@ -136,6 +138,33 @@ export function buildSeed(): Seed {
     { id: "lo_dimers_dk", siteId: "st_dimers_tt", widgetInstanceId: "wi_dimers_odds", operatorId: "op_dk", affiliateUrl: "https://draftkings.example/aff?c=dimers&w=odds" },
   ];
 
+  // Per-client affiliate links — each publisher's own tracking link per platform (spec 09).
+  const affiliateLinks: AffiliateLink[] = [];
+  const al = (tag: string, clientId: string, operatorId: string, url: string) =>
+    affiliateLinks.push({ id: `al_${tag}_${operatorId.replace("op_", "")}`, clientId, operatorId, affiliateUrl: url, active: true });
+  // Dimers (the demo publisher) — their own tracking IDs
+  al("dimers", "cl_dimers", "op_dk", "https://draftkings.example/aff?b=dimers-7741");
+  al("dimers", "cl_dimers", "op_fd", "https://fanduel.example/aff?b=dimers-7741");
+  al("dimers", "cl_dimers", "op_mgm", "https://betmgm.example/aff?b=dimers-7741");
+  al("dimers", "cl_dimers", "op_caesars", "https://caesars.example/aff?b=dimers-7741");
+  al("dimers", "cl_dimers", "op_pinnacle", "https://pinnacle.example/aff?b=dimers-7741");
+  al("dimers", "cl_dimers", "op_poly", "https://polymarket.example/aff?b=dimers-7741");
+  al("dimers", "cl_dimers", "op_kalshi", "https://kalshi.example/aff?b=dimers-7741");
+  al("dimers", "cl_dimers", "op_calcx", "https://calcx.example/aff?b=dimers-7741");
+  // Catena (a different publisher) — different tracking IDs prove per-client isolation
+  al("catena", "cl_catena", "op_dk", "https://draftkings.example/aff?b=catena-3310");
+  al("catena", "cl_catena", "op_fd", "https://fanduel.example/aff?b=catena-3310");
+  al("catena", "cl_catena", "op_mgm", "https://betmgm.example/aff?b=catena-3310");
+  // Aithreus internal — a populated workspace for the superadmin/internal demo
+  al("aith", "cl_aithreus", "op_dk", "https://draftkings.example/aff?b=aithreus");
+  al("aith", "cl_aithreus", "op_fd", "https://fanduel.example/aff?b=aithreus");
+  al("aith", "cl_aithreus", "op_mgm", "https://betmgm.example/aff?b=aithreus");
+  al("aith", "cl_aithreus", "op_caesars", "https://caesars.example/aff?b=aithreus");
+  al("aith", "cl_aithreus", "op_pinnacle", "https://pinnacle.example/aff?b=aithreus");
+  al("aith", "cl_aithreus", "op_poly", "https://polymarket.example/aff?b=aithreus");
+  al("aith", "cl_aithreus", "op_kalshi", "https://kalshi.example/aff?b=aithreus");
+  al("aith", "cl_aithreus", "op_calcx", "https://calcx.example/aff?b=aithreus");
+
   return {
     clients,
     users,
@@ -145,6 +174,7 @@ export function buildSeed(): Seed {
     widgetTypes,
     widgetInstances,
     overrides,
+    affiliateLinks,
     events: generateEvents(sites, widgetInstances, operators),
     ...buildContent(),
   };

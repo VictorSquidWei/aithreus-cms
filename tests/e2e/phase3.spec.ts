@@ -78,7 +78,7 @@ test("Gallery — preview CTAs reflect active operators; kill-switch removes the
   // Turn Pinnacle off in Step 1 (global kill switch).
   await page.goto("/admin/operators");
   await page.getByLabel("Toggle Pinnacle").click();
-  await expect(page.getByText("Pinnacle turned off")).toBeVisible();
+  await expect(page.getByText("Pinnacle disabled")).toBeVisible();
 
   // Gallery no longer renders any Pinnacle CTA.
   await page.goto("/admin/gallery");

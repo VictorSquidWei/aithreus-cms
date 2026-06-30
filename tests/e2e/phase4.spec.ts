@@ -50,7 +50,7 @@ test("§9.14 end-to-end loop: CMS change + Publish → demo updates, embed uncha
   await loginClient(page);
   await page.goto("/admin/operators");
   await page.getByLabel("Toggle FanDuel").click();
-  await expect(page.getByText("FanDuel turned off")).toBeVisible();
+  await expect(page.getByText("FanDuel disabled")).toBeVisible();
   await page.getByTestId("publish-open").click();
   await page.getByTestId("publish-confirm").click();
   await expect(page.getByText("Published", { exact: false })).toBeVisible();

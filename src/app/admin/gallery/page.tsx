@@ -1,27 +1,33 @@
 import Link from "next/link";
+import { getViewer } from "@/server/session";
 import { getActiveVertical } from "@/server/vertical";
 import { getStore } from "@/server/store";
-import { ctaOperators, slotOperatorsForWidget } from "@/server/resolution";
+import { eligibleOperators, slotsForWidget } from "@/server/resolution";
 import { PageContainer, PageHeader } from "@/components/page-container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { WidgetPreviewFrame } from "@/components/link-cms/widget-preview-frame";
 
 export default async function GalleryPage() {
+  const viewer = await getViewer();
   const vertical = await getActiveVertical();
   const store = getStore();
-  const [types, rawOps] = await Promise.all([store.listWidgetTypes(vertical), store.rawOperators(vertical)]);
-  const activeOps = ctaOperators(rawOps);
+  const [types, rawOps, links] = await Promise.all([
+    store.listWidgetTypes(vertical),
+    store.rawOperators(vertical),
+    viewer.role === "public" ? Promise.resolve([]) : store.listAffiliateLinks(viewer.clientId),
+  ]);
+  const eligible = eligibleOperators(rawOps, links);
 
   return (
     <PageContainer>
       <PageHeader title="Widget gallery" subtitle={`${vertical} · preview each widget with your live operator config`} />
       <div className="grid gap-4 md:grid-cols-2" data-testid="gallery">
         {types.map((t) => {
-          const ctas = slotOperatorsForWidget(activeOps, t).map((o) => ({
-            name: o.slug,
-            label: o.buttonLabel,
-            color: o.brandColor,
+          const ctas = slotsForWidget(eligible, t).map(({ operator }) => ({
+            name: operator.slug,
+            label: operator.buttonLabel,
+            color: operator.brandColor,
           }));
           return (
             <div
