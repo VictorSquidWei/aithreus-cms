@@ -58,16 +58,26 @@ export function AffiliateLinkRow({ operator, link }: { operator: Operator; link?
   }
 
   return (
-    <tr data-testid={`operator-row-${operator.id}`} className="border-t border-border">
-      <td className="px-3 py-2">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-4 w-4 shrink-0 rounded border border-border" style={{ background: operator.brandColor }} />
+    <tr data-testid={`operator-row-${operator.id}`} className="border-t border-border transition-colors hover:bg-surface-2/40">
+      <td className="px-3 py-2.5">
+        <span className="inline-flex items-center gap-2.5">
+          <span
+            className="h-6 w-6 shrink-0 rounded-md ring-1 ring-inset ring-white/10 shadow-sm"
+            style={{ background: operator.brandColor }}
+          />
           <span className="font-medium text-fg">{operator.name}</span>
-          {operator.internalOnly && <span className="text-[10px] font-semibold text-warning">internal</span>}
+          {operator.internalOnly && (
+            <span className="rounded-sm bg-warning/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
+              internal
+            </span>
+          )}
           {!operator.active && <span className="text-[10px] text-fg-faint">(catalog off)</span>}
+          {operator.active && !operator.internalOnly && !link && (
+            <span className="text-[10px] text-fg-faint">not set</span>
+          )}
         </span>
       </td>
-      <td className="px-3 py-2">
+      <td className="px-3 py-2.5">
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -78,7 +88,7 @@ export function AffiliateLinkRow({ operator, link }: { operator: Operator; link?
           spellCheck={false}
         />
       </td>
-      <td className="px-3 py-2">
+      <td className="px-3 py-2.5">
         <Switch
           checked={active}
           onCheckedChange={toggle}
@@ -88,7 +98,7 @@ export function AffiliateLinkRow({ operator, link }: { operator: Operator; link?
           data-testid={`operator-active-${operator.id}`}
         />
       </td>
-      <td className="px-3 py-2">
+      <td className="px-3 py-2.5">
         <div className="flex justify-end gap-1">
           <OperatorForm
             operator={operator}

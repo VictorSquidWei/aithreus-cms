@@ -41,12 +41,12 @@ export function OperatorsManager({ rows }: { rows: { operator: Operator; link?: 
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-sm" data-testid="operators-table">
-            <thead className="bg-surface-2 text-xs text-fg-muted">
+            <thead className="bg-surface-2 text-[11px] uppercase tracking-wide text-fg-muted">
               <tr>
-                <th className="px-3 py-2 text-left font-medium">Platform</th>
-                <th className="px-3 py-2 text-left font-medium">Your affiliate URL</th>
-                <th className="px-3 py-2 text-left font-medium">Active</th>
-                <th className="px-3 py-2" />
+                <th className="px-3 py-2.5 text-left font-semibold">Platform</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Your affiliate URL</th>
+                <th className="px-3 py-2.5 text-left font-semibold">Active</th>
+                <th className="px-3 py-2.5" />
               </tr>
             </thead>
             <tbody>
