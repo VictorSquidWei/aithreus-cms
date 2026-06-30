@@ -3,6 +3,8 @@
 > The single, comprehensive reference for this system: **what it does** (across VNX-Terminal, VNX plugins, TT-Terminal, TT plugins) and **how an engineering team takes it to production** (including AWS).
 >
 > Companion docs: [GUIDE.md](GUIDE.md) (navigation), [DEMO.md](DEMO.md) (walkthrough), [docs/engineering/](docs/engineering/README.md) (deep references), [specs/INDEX.md](specs/INDEX.md) (feature specs). This file consolidates and is self-contained.
+>
+> **Live demo:** **https://aithreus-cms.vercel.app** (`client@dimers.com` / `client123`). Vercel SSR; in-memory store (see [DEPLOYMENT.md](docs/engineering/DEPLOYMENT.md) for the cross-instance-persistence caveat and the AWS production path).
 
 ---
 

@@ -1,4 +1,16 @@
-# Deployment — AWS eu-west-1 (Dublin)
+# Deployment
+
+## Live demo — Vercel (current)
+The shareable build runs on **Vercel** (native Next.js SSR) at **https://aithreus-cms.vercel.app** — a fast public link for demos. AWS (below) remains the eventual production target.
+
+- **Deploy:** `vercel deploy --prod` from the repo root. Project `contextive-ai/aithreus-cms`, linked via `.vercel/` (gitignored). The GitHub repo is connected, so pushes to `main` also trigger a deploy.
+- **Build:** Vercel runs `npm run build`; the `prebuild` hook builds the widget bundle (`public/widget/v1/embed.js`) first, so the runtime is complete.
+- **Runtime:** in-memory store (no `DATABASE_URL`) — seeds on cold start, and a published demo config ships in the seed so the widget loop renders immediately. **Caveat:** each serverless instance holds its own in-memory store, so live edits / Publish may not persist across instances or cold starts. Set `DATABASE_URL` (any Postgres) for shared, durable state — the DrizzleStore activates automatically.
+- **Auth:** `AUTH_SECRET` falls back to a dev value if unset (fine for a throwaway demo); set a real secret for anything else. Cookies are `Secure` in production and Vercel serves HTTPS, so sessions work.
+
+> **Why not GitHub Pages:** this is an SSR app — middleware auth guards, API routes (config endpoint, `/r/` redirect, event beacon), and server actions all need a Node server. GitHub Pages serves only static files; a static export (`output: 'export'`) can't build the dynamic `cookies()`/`headers()` server components and drops all API routes, so login, admin, and the edit→Publish→live-widget loop would not work. Use an SSR host (Vercel above, or AWS below).
+
+## Production target — AWS eu-west-1 (Dublin)
 
 Target topology: Next.js app on **Amplify Hosting** (SSR), **RDS Postgres**, `embed.js` on **S3 + CloudFront**.
 

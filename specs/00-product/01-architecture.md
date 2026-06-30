@@ -129,7 +129,10 @@ AWS_REGION=eu-west-1
 
 - **Dev (no DB needed):** `npm install` → set `AUTH_SECRET` in `.env` → `npm run dev` (runs `build:widget` first; seeds in-memory store at boot).
 - **Scripts:** `dev`, `build`, `start`, `build:widget`, `seed`, `test:e2e`; (Phase 7) `db:push`, `db:migrate`.
-- **Deploy:** AWS **Amplify Hosting** (Next SSR) in **eu-west-1**; `embed.js` to **S3 + CloudFront** (`cdn.aithreus.com`); **RDS Postgres** in eu-west-1 once wired. `AUTH_SECRET` (+ later `DATABASE_URL`) as Amplify env vars. `main` kept deployable; phase branches → PRs.
+- **Deploy:**
+  - *Live demo:* **Vercel** (native Next SSR) at **https://aithreus-cms.vercel.app** — public, in-memory store, `prebuild` builds the widget bundle, GitHub repo connected so `main` auto-deploys. See `docs/engineering/DEPLOYMENT.md`.
+  - *Production target:* AWS **Amplify Hosting** (Next SSR) in **eu-west-1**; `embed.js` to **S3 + CloudFront** (`cdn.aithreus.com`); **RDS Postgres** in eu-west-1 once wired. `AUTH_SECRET` (+ later `DATABASE_URL`) as env vars. `main` kept deployable; phase branches → PRs.
+  - *Not GitHub Pages:* the app is SSR (middleware auth, API routes, server actions, `/r/` redirect) and can't run on static-only hosting — a static export would break login, the admin, and the edit→Publish→live-widget loop.
 - **README** documents setup/env/run/deploy.
 
 ## 8. UI states
